@@ -38,11 +38,10 @@ export function renderChooserPanel(c: Constraints): string {
       <span class="eyebrow">Start here</span>
       <h2 id="chooser-h">Which two should you investigate?</h2>
       <p class="card-lead">
-        NIST standardised several replacements for the cryptography a quantum computer would
-        break, and they trade against each other: small keys against large signatures, fast
-        verification against slow signing. Set what constrains you and this shortlists two to
-        look at — from sizes it derives by <strong>running the real algorithms here</strong>,
-        never from a table.
+        NIST standardised several post-quantum replacements, and they trade against each other
+        — small keys against large signatures, fast verification against slow signing. Tell it
+        what constrains you and it shortlists two, from sizes it derives by
+        <strong>running the real algorithms here</strong>.
       </p>
 
       <div class="role-tabs" role="tablist" aria-label="What are you choosing?">

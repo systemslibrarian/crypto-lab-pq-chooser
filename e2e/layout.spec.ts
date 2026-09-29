@@ -55,16 +55,27 @@ test.describe('the first viewport', () => {
 
       // THE HARD BAR, and the review's acceptance test verbatim: the first
       // action is visible without scrolling.
+      //
+      // Asserted with HEADROOM rather than against the fold exactly. Text height
+      // is platform-dependent: the same page put this control at 813px here and
+      // 885px on the Linux CI runner, because the runner's font is wider and the
+      // copy above wraps to more lines. A threshold set at the fold measures
+      // which machine ran the test; a threshold set a wrapped line or two short
+      // of it measures the layout. 80px is roughly three lines of body copy at
+      // this size, and it is more than the 72px difference actually observed.
+      const HEADROOM = 80;
       const tab = await boxOf(page, '#role-kem');
       expect(
         tab.bottom,
-        `the role selector must be reachable without scrolling at ${name} (it ends at ${Math.round(tab.bottom)}px in a ${viewport.height}px viewport)`
-      ).toBeLessThan(viewport.height);
+        `the role selector must be reachable without scrolling at ${name}, with room for a wider font (it ends at ${Math.round(tab.bottom)}px in a ${viewport.height}px viewport)`
+      ).toBeLessThan(viewport.height - HEADROOM);
 
       // ...and the question it answers has to be visible with it, or the
       // control is a pair of unexplained buttons.
       const heading = await boxOf(page, '#chooser-h');
-      expect(heading.bottom, `the chooser's own heading at ${name}`).toBeLessThan(viewport.height);
+      expect(heading.bottom, `the chooser's own heading at ${name}`).toBeLessThan(
+        viewport.height - HEADROOM
+      );
 
       // A SOFTER, STATED BAR for the rest of the decision surface. Requiring
       // every constraint above the fold too is not reachable on a 390x844

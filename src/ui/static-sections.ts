@@ -15,9 +15,8 @@ export function renderHero(): string {
         <h1 class="cl-hero-title">PQ Chooser</h1>
         <p class="cl-hero-sub">ML-KEM · ML-DSA · FN-DSA · SLH-DSA · FIPS 203/204/205</p>
         <p class="cl-hero-desc">
-          Derives every key, ciphertext and signature size across nineteen post-quantum parameter
-          sets by running the real algorithms in your browser, then shortlists two you should
-          investigate.
+          Derives all nineteen post-quantum parameter sets by running the real algorithms in
+          your browser, then shortlists two to investigate.
         </p>
       </div>
       <aside class="cl-hero-why" aria-label="Why it matters">
