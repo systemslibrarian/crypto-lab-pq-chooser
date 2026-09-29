@@ -76,6 +76,7 @@ export interface DerivationEvent {
 
 export type WorkerRequest =
   | { kind: 'derive-matrix' }
+  | { kind: 'derive-slow' }
   | { kind: 'skip-slow' }
   | { kind: 'wire'; requestId: number; kemId: string; sigId: string }
   | { kind: 'hybrid'; requestId: number; hybridId: string; baseId: string }
@@ -84,6 +85,8 @@ export type WorkerRequest =
 
 export type WorkerResponse =
   | { kind: 'row'; row: DerivedRow; event: DerivationEvent | null }
+  /** The sixteen core sets are all in. The chooser is usable from here. */
+  | { kind: 'core-ready'; coreMs: number }
   | { kind: 'matrix-done'; totalMs: number }
   | { kind: 'wire-result'; requestId: number; result: import('../wire/handshake').HandshakeCost }
   | { kind: 'wire-error'; requestId: number; message: string }

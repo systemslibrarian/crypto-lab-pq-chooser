@@ -17,6 +17,15 @@
  * because a median over three samples and a median over thirty are different
  * claims, and a table that hides which is which has made them look the same.
  *
+ * ── Why the ratio column has more than one baseline ───────────────────────
+ * An earlier version took every ratio against X25519, which made signature key
+ * generation, signing and verification read as multiples of a key-agreement
+ * operation. The arithmetic was right and the comparison was not decision-
+ * useful, because it crossed cryptographic roles: "ML-DSA-65 signs 40x slower
+ * than X25519 derives" compares two things nobody chooses between. Each row is
+ * now measured against the classical primitive it would actually replace, and
+ * every ratio names its own baseline on the cell.
+ *
  * ── Why RSA-2048 key generation is not measured ───────────────────────────
  * It is a randomised prime search. Timing it measures how lucky the search got,
  * not how fast RSA is, and it would dominate the run. The cell says NOT
@@ -26,7 +35,7 @@
  */
 
 import { KEMS, SIGNERS, DERIVATION_MESSAGE } from '../derive/adapters';
-import { SCHEMES_BY_ID, type CostClass } from '../derive/schemes';
+import { SCHEMES_BY_ID, type CostClass, type SchemeKind } from '../derive/schemes';
 import { collectEnvironment, type BenchmarkEnvironment } from './environment';
 import { summarize, type Summary } from './stats';
 import { FAILURE_CODES, FAILURE_CAUSES, type FailureCode } from '../derive/codes';
@@ -84,6 +93,12 @@ export interface BenchmarkRow {
   label: string;
   /** 'post-quantum' rows are the subject; 'classical' rows are the baseline. */
   group: 'post-quantum' | 'classical';
+  /**
+   * Which cryptographic role this row fills, and therefore which classical
+   * primitive its ratios are taken against. A ratio that crosses roles is a
+   * number, not a comparison.
+   */
+  role: SchemeKind;
   costClass: CostClass;
   warmupIterations: number;
   measuredIterations: number;
@@ -96,8 +111,8 @@ export interface BenchmarkRow {
 export interface BenchmarkRun {
   environment: BenchmarkEnvironment;
   rows: BenchmarkRow[];
-  /** Which classical row the ratio column is taken against, and why. */
-  baselineId: string;
+  /** The classical row each role's ratios are taken against. */
+  baselineByRole: Record<SchemeKind, string>;
   totalMs: number;
 }
 
@@ -183,6 +198,7 @@ async function benchmarkScheme(
       id: schemeId,
       label: scheme.label,
       group: 'post-quantum',
+      role: 'kem',
       costClass: scheme.costClass,
       warmupIterations: counts.warmup,
       measuredIterations: counts.measured,
@@ -212,6 +228,7 @@ async function benchmarkScheme(
     id: schemeId,
     label: scheme.label,
     group: 'post-quantum',
+    role: 'signature',
     costClass: scheme.costClass,
     warmupIterations: counts.warmup,
     measuredIterations: counts.measured,
@@ -239,6 +256,7 @@ async function benchmarkX25519(
     id: 'x25519',
     label: 'X25519 (ECDH)',
     group: 'classical',
+    role: 'kem',
     costClass: CLASSICAL_COST_CLASS,
     warmupIterations: counts.warmup,
     measuredIterations: counts.measured,
@@ -314,6 +332,7 @@ async function benchmarkEcdsaP256(
     id: 'ecdsa-p256',
     label: 'ECDSA P-256',
     group: 'classical',
+    role: 'signature',
     costClass: CLASSICAL_COST_CLASS,
     warmupIterations: counts.warmup,
     measuredIterations: counts.measured,
@@ -367,6 +386,7 @@ async function benchmarkRsa2048(
     id: 'rsa-2048',
     label: 'RSA-2048',
     group: 'classical',
+    role: 'signature',
     costClass: CLASSICAL_COST_CLASS,
     warmupIterations: counts.warmup,
     measuredIterations: counts.measured,
@@ -413,14 +433,22 @@ async function benchmarkRsa2048(
 export const CLASSICAL_ROW_IDS = ['x25519', 'ecdsa-p256', 'rsa-2048'] as const;
 
 /**
- * The row every ratio is taken against.
+ * The classical primitive each role is measured against.
  *
- * X25519, because it is the one operation in this table that both a classical
- * and a post-quantum handshake must perform, and because it is the fastest
- * thing here — which makes every ratio a cost rather than a saving, and stops
- * the column from ever reading as a security ranking.
+ * X25519 for key agreement and ECDSA P-256 for signatures: in both cases the
+ * thing a deployment would actually be replacing. RSA-2048 sits in the table as
+ * a second signature reference rather than as a baseline, because a large share
+ * of the certificate estate still authenticates with it and its verify/sign
+ * asymmetry is the shape post-quantum signatures are usually compared against.
+ *
+ * Both baselines are faster than everything they are compared with, so every
+ * ratio reads as a cost rather than a saving — which is the other reason not to
+ * let this column drift into looking like a ranking.
  */
-export const RATIO_BASELINE_ID = 'x25519';
+export const BASELINE_BY_ROLE: Record<SchemeKind, string> = {
+  kem: 'x25519',
+  signature: 'ecdsa-p256',
+};
 
 export async function runBenchmark(
   schemeIds: readonly string[],
@@ -451,7 +479,7 @@ export async function runBenchmark(
   return {
     environment,
     rows,
-    baselineId: RATIO_BASELINE_ID,
+    baselineByRole: BASELINE_BY_ROLE,
     totalMs: performance.now() - started,
   };
 }

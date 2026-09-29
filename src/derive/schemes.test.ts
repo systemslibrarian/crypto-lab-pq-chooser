@@ -38,11 +38,15 @@ import { renderNegativeClaimPanel } from '../ui/negative-claim';
 import { renderLogPanel } from '../ui/log';
 import {
   renderHero,
-  renderIntro,
+  renderIntroLong,
   renderRelated,
   renderRiskPanel,
   renderScope,
+  renderSectionNav,
 } from '../ui/static-sections';
+import { renderChooserPanel } from '../ui/chooser-panel';
+import { renderComparePanel } from '../ui/compare-tray';
+import { DEFAULT_CONSTRAINTS } from '../choose/rules';
 import { FAILURE_CODES } from './codes';
 
 const SRC = new URL('..', import.meta.url).pathname;
@@ -195,7 +199,10 @@ describe('invariant 1, by output — the page shows no figure before it derives 
   it('the initial render contains no published size anywhere', () => {
     let html = [
       renderHero(),
-      renderIntro(),
+      renderIntroLong(),
+      renderSectionNav(),
+      renderChooserPanel(DEFAULT_CONSTRAINTS),
+      renderComparePanel(),
       renderMatrix(),
       renderLogPanel(),
       renderMisquotePanel(),

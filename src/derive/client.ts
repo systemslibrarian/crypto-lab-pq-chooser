@@ -21,6 +21,8 @@ import type { BenchmarkRun } from '../bench/runner';
 export interface DeriveListener {
   onRow: (row: DerivedRow) => void;
   onEvent: (event: DerivationEvent) => void;
+  /** The sixteen core sets are in; the chooser is usable from here. */
+  onCoreReady: (coreMs: number) => void;
   onMatrixDone: (totalMs: number) => void;
   onBenchmarkProgress: (done: number, total: number, label: string) => void;
 }
@@ -44,6 +46,9 @@ export class DeriveClient {
   private readonly fixturePending = new Map<number, Pending<KemFixtureResult>>();
   private readonly benchPending = new Map<number, Pending<BenchmarkRun>>();
   private skipRequested = false;
+  private slowRequested = false;
+  /** Set once the core pass finishes, so a late subscriber can still tell. */
+  coreReadyMs: number | null = null;
 
   constructor(listener: DeriveListener) {
     this.listener = listener;
@@ -85,11 +90,24 @@ export class DeriveClient {
     return this.skipRequested;
   }
 
+  /** True once the reader has asked for the deferred sets to be measured. */
+  get slowRunning(): boolean {
+    return this.slowRequested && !this.skipRequested;
+  }
+
   start(): void {
     this.send({ kind: 'derive-matrix' });
   }
 
-  skipSlowSets(): void {
+  /** Measure the three deferred SLH-DSA `s` sets. Costs seconds, by design. */
+  deriveSlowSets(): void {
+    if (this.slowRequested) return;
+    this.slowRequested = true;
+    this.skipRequested = false;
+    this.send({ kind: 'derive-slow' });
+  }
+
+  stopSlowSets(): void {
     this.skipRequested = true;
     this.send({ kind: 'skip-slow' });
   }
@@ -162,6 +180,10 @@ export class DeriveClient {
           this.events.push(message.event);
           this.listener.onEvent(message.event);
         }
+        return;
+      case 'core-ready':
+        this.coreReadyMs = message.coreMs;
+        this.listener.onCoreReady(message.coreMs);
         return;
       case 'matrix-done':
         this.listener.onMatrixDone(message.totalMs);

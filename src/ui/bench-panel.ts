@@ -4,8 +4,14 @@
  * Median and p95 for key generation, the producing operation and the consuming
  * one, for a selection of post-quantum sets and for X25519, ECDSA P-256 and
  * RSA-2048 — all measured by one harness, in one run, on the reader's own
- * device. The ratio column is against X25519, which is the one operation both a
- * classical and a post-quantum handshake must perform.
+ * device.
+ *
+ * RATIOS DO NOT CROSS ROLES. A KEM row is compared with X25519 and a signature
+ * row with ECDSA P-256, and each ratio names its own baseline where it is
+ * printed. Taking every ratio against X25519, as this panel first did, produced
+ * arithmetic that was correct and useless: "ML-DSA-65 signs 40x slower than
+ * X25519 derives" compares two operations nobody chooses between, and reads as
+ * a verdict on ML-DSA.
  *
  * Three things are printed beside every figure because without them a timing is
  * not a measurement: the sample count, the clock's measured resolution, and the
@@ -18,7 +24,6 @@
 import {
   ITERATIONS,
   OPERATION_SLOTS,
-  RATIO_BASELINE_ID,
   type BenchmarkRow,
   type BenchmarkRun,
   type OperationSlot,
@@ -79,6 +84,18 @@ export function renderBenchPanel(): string {
       </div>
       <p class="status-line" id="bench-progress" role="status" aria-live="polite" aria-atomic="true"></p>
       <div id="bench-output"></div>
+      <h3>Take this run with you</h3>
+      <p class="card-lead">
+        A figure from this page cannot be quoted without the run that produced it, so the run is
+        exportable: library version, environment, clock resolution, sample counts, which sets were
+        derived and which were not and why. The link carries your constraints and pins — never a
+        derived figure, so the other browser derives its own.
+      </p>
+      <div class="controls">
+        <button type="button" id="export-json">Download run (JSON)</button>
+        <button type="button" id="export-csv">Download run (CSV)</button>
+        <button type="button" id="copy-link">Copy a link to this shortlist</button>
+      </div>
     </section>`;
 }
 
@@ -110,7 +127,13 @@ function environmentBlock(run: BenchmarkRun): string {
     </div>`;
 }
 
-function cell(row: BenchmarkRow, slot: OperationSlot, resolution: number, baselineMedian: number | null): string {
+interface Baseline {
+  /** The row this ratio is taken against, or null when this row IS that row. */
+  median: number | null;
+  label: string;
+}
+
+function cell(row: BenchmarkRow, slot: OperationSlot, resolution: number, baseline: Baseline): string {
   const op = row.operations.find((o) => o.slot === slot);
   if (!op) {
     const missing = row.unmeasured.find((u) => u.slot === slot);
@@ -120,10 +143,14 @@ function cell(row: BenchmarkRow, slot: OperationSlot, resolution: number, baseli
     return `<td class="numeric"><span class="sr-only">not measured</span><span aria-hidden="true">—</span></td>`;
   }
   const s = op.summary;
+  // The baseline is NAMED on every cell. A bare "3.1x" in a table with two
+  // baselines is a number whose meaning depends on which row you are reading.
   const ratio =
-    baselineMedian !== null && baselineMedian > 0 && !belowResolution(s.median, resolution)
-      ? `<span class="row-note">${(s.median / baselineMedian).toFixed(1)}× X25519</span>`
-      : '';
+    baseline.median === null
+      ? `<span class="row-note">the baseline for ${row.role === 'kem' ? 'key agreement' : 'signatures'}</span>`
+      : baseline.median > 0 && !belowResolution(s.median, resolution)
+        ? `<span class="row-note" data-ratio-baseline="${escapeHTML(baseline.label)}">${(s.median / baseline.median).toFixed(1)}× ${escapeHTML(baseline.label)}</span>`
+        : '';
   return `<td class="numeric" data-op="${escapeHTML(op.operation)}">
     ${escapeHTML(duration(s.median, resolution))}
     <span class="row-note">p95 ${escapeHTML(duration(s.p95, resolution))} · n=${s.n} · ${escapeHTML(op.operation)}</span>
@@ -133,17 +160,31 @@ function cell(row: BenchmarkRow, slot: OperationSlot, resolution: number, baseli
 
 export function renderBenchResult(run: BenchmarkRun): string {
   const resolution = run.environment.timerResolutionMs;
-  const baseline = run.rows.find((r) => r.id === RATIO_BASELINE_ID);
-  const baselineMedian = (slot: OperationSlot): number | null =>
-    baseline?.operations.find((o) => o.slot === slot)?.summary.median ?? null;
+  const baselineRow = (row: BenchmarkRow): BenchmarkRow | undefined =>
+    run.rows.find((r) => r.id === run.baselineByRole[row.role]);
+
+  const baselineFor = (row: BenchmarkRow, slot: OperationSlot): Baseline => {
+    const against = baselineRow(row);
+    const label = against?.label ?? run.baselineByRole[row.role];
+    // A row is not compared with itself.
+    if (!against || against.id === row.id) return { median: null, label };
+    return { median: against.operations.find((o) => o.slot === slot)?.summary.median ?? null, label };
+  };
 
   const body = run.rows
     .map((row) => {
       if (row.unsupportedReason && row.operations.length === 0) {
         return `<tr data-bench-row="${escapeHTML(row.id)}"><th scope="row">${escapeHTML(row.label)}</th><td colspan="3"><span class="state state-unavailable"><span class="state-icon" aria-hidden="true">⊘</span><span>unavailable</span></span><span class="row-note">${escapeHTML(row.unsupportedReason)}</span></td></tr>`;
       }
-      const cells = OPERATION_SLOTS.map((slot) => cell(row, slot, resolution, baselineMedian(slot))).join('');
-      return `<tr data-bench-row="${escapeHTML(row.id)}" data-group="${row.group}"><th scope="row">${escapeHTML(row.label)}<span class="row-note">${row.group === 'classical' ? 'classical baseline' : 'post-quantum'} · ${row.warmupIterations} warm-up</span></th>${cells}</tr>`;
+      const cells = OPERATION_SLOTS.map((slot) => cell(row, slot, resolution, baselineFor(row, slot))).join('');
+      const roleWord = row.role === 'kem' ? 'key agreement' : 'signature';
+      const kind =
+        row.group === 'classical'
+          ? run.baselineByRole[row.role] === row.id
+            ? `classical baseline for ${roleWord}`
+            : `classical ${roleWord} reference`
+          : `post-quantum ${roleWord}`;
+      return `<tr data-bench-row="${escapeHTML(row.id)}" data-group="${row.group}" data-role="${row.role}"><th scope="row">${escapeHTML(row.label)}<span class="row-note">${kind} · ${row.warmupIterations} warm-up</span></th>${cells}</tr>`;
     })
     .join('');
 
@@ -151,9 +192,12 @@ export function renderBenchResult(run: BenchmarkRun): string {
     <div class="table-wrap" tabindex="0" role="region" aria-label="Benchmark results, scrollable">
       <table id="bench-table">
         <caption>
-          Median per operation, with p95 and the sample count beside it. Ratios are against
-          X25519 measured in this same run. This is a measurement of your device in this browser
-          on this run — not a hardware ranking, and not a security ranking.
+          Median per operation, with p95 and the sample count beside it. Every ratio is against
+          the classical primitive that fills the SAME role, measured in this same run: key
+          agreement against X25519, signatures against ECDSA P-256, with RSA-2048 present as a
+          second signature reference rather than as a baseline. Each ratio names the row it is
+          taken against. This is a measurement of your device in this browser on this run —
+          not a hardware ranking, and not a security ranking.
         </caption>
         <thead>
           <tr>

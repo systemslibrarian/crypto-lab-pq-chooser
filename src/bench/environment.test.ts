@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { __parsers, measureTimerResolution } from './environment';
-import { ITERATIONS, CLASSICAL_COST_CLASS, OPERATION_SLOTS, RATIO_BASELINE_ID } from './runner';
+import { ITERATIONS, CLASSICAL_COST_CLASS, OPERATION_SLOTS, BASELINE_BY_ROLE } from './runner';
 
 const { parseBrowser, parseOperatingSystem } = __parsers;
 
@@ -104,8 +104,11 @@ describe('the benchmark’s own settings', () => {
     expect(CLASSICAL_COST_CLASS).toBe('cheap');
   });
 
-  it('takes its ratios against a row that is measured in the same run', () => {
-    expect(RATIO_BASELINE_ID).toBe('x25519');
+  it('takes each role\u2019s ratios against the classical primitive it would replace', () => {
+    // Not one global baseline: a signature measured against a key-agreement
+    // operation is arithmetic that crosses roles and reads as a verdict.
+    expect(BASELINE_BY_ROLE.kem).toBe('x25519');
+    expect(BASELINE_BY_ROLE.signature).toBe('ecdsa-p256');
   });
 
   it('has exactly three operation slots', () => {

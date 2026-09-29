@@ -65,6 +65,19 @@
   box-sizing: border-box;
 }
 
+/*
+ * `[hidden]` has to actually hide.
+ *
+ * The UA stylesheet's `[hidden] { display: none }` is the weakest rule there
+ * is, and ANY author rule setting `display` beats it -- so `.field { display:
+ * flex }` left the chooser's role-specific controls on screen while the code
+ * believed they were hidden. That is the exact cascade trap `e2e/claims.spec.ts`
+ * probes for, and the probe caught this one rather than a reader having to.
+ */
+[hidden] {
+  display: none !important;
+}
+
 /* The longhand, not the `background` shorthand: axe and WebKit miss the
    shorthand when deciding what a text node is painted on. */
 html {
@@ -170,7 +183,9 @@ body {
   justify-content: space-between;
   gap: clamp(1rem, 4vw, 3rem);
   flex-wrap: wrap;
-  margin: clamp(1rem, 3vw, 2rem) 0 1.5rem;
+  /* Trimmed from `clamp(1rem,3vw,2rem) 0 1.5rem`: every pixel here is a pixel
+     the first actionable control is pushed below the fold. */
+  margin: clamp(0.75rem, 2vw, 1.25rem) 0 1rem;
 }
 .cl-hero-main {
   flex: 1 1 22rem;
@@ -237,10 +252,27 @@ body {
   .cl-hero-main {
     width: 100%;
     min-width: 0;
+    /*
+     * `flex: 1 1 22rem` is a main-axis basis, and once the hero stacks the main
+     * axis is VERTICAL -- so the title block reserved 22rem of HEIGHT and left
+     * roughly 200px of dead space above the fold on a phone. The review caught
+     * it; the fix is to stop the desktop basis applying in the other direction.
+     */
+    flex: 0 0 auto;
+  }
+  .cl-hero {
+    margin-block: 0.75rem 1rem;
+  }
+  .cl-hero-desc {
+    margin-top: 0.4rem;
   }
   .cl-hero-why {
     flex-basis: auto;
     width: 100%;
+    padding: 0.7rem 0.85rem;
+  }
+  .cl-hero-why-text {
+    font-size: 0.9rem;
   }
 }
 
@@ -763,5 +795,379 @@ details > *:not(summary) {
   *::after {
     animation: none !important;
     transition: none !important;
+  }
+}
+
+
+/* ── Section anchors under a sticky bar ────────────────────────────────────
+ *
+ * `.cl-topbar` is `position: sticky` and about 56px tall, so a fragment link
+ * scrolls its target underneath the bar and the heading a reader just asked for
+ * is the one thing they cannot see. `scroll-margin-top` moves the scroll
+ * position, not the layout. `e2e/layout.spec.ts` measures it rather than
+ * trusting this rule to exist.
+ */
+:target,
+main section[id],
+#app [id] {
+  scroll-margin-top: 4.5rem;
+}
+
+/* ── The section rail ──────────────────────────────────────────────────── */
+
+.section-nav {
+  margin: 0 0 1.25rem;
+}
+.section-nav ul {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+}
+.section-nav a {
+  display: inline-block;
+  padding: 0.3rem 0.65rem;
+  border: 1px solid var(--control-border);
+  border-radius: 999px;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  text-decoration: none;
+}
+.section-nav a:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+/* ── The chooser, which is the first thing and should look like it ──────── */
+
+.card-intro {
+  background: transparent;
+  border: none;
+  padding: 0 0 0.25rem;
+  margin-bottom: 0.75rem;
+}
+.card-intro p {
+  color: var(--text-dim);
+  max-width: 78ch;
+}
+
+/*
+ * One card carries more weight than the rest, on purpose. The review found ten
+ * cards of equal visual weight reading as one long required sequence; the
+ * chooser is the entry point, so it gets the accent edge and nothing else does.
+ */
+.card-primary {
+  border-color: color-mix(in oklab, var(--accent) 55%, var(--border));
+  background: color-mix(in oklab, var(--accent) 4%, var(--surface));
+}
+
+.role-tabs {
+  display: flex;
+  gap: 0.4rem;
+  margin: 0.9rem 0 0.5rem;
+}
+#app .role-tab {
+  flex: 1 1 auto;
+  padding: 0.6rem 1rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+/*
+ * The `:hover` variant is not decoration, it is a specificity fix the gate
+ * caught. `#app button:hover:not(:disabled)` scores (1,2,1) and
+ * `#app .role-tab[aria-selected='true']` only (1,2,0), so hovering the SELECTED
+ * tab handed it the generic hover fill while it kept `--accent-ink` -- dark ink
+ * on a dark surface, and `:hover` persists after a click, so that is the state
+ * a reader is in the instant after choosing a track.
+ */
+#app .role-tab[aria-selected='true'],
+#app .role-tab[aria-selected='true']:hover:not(:disabled) {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+}
+.role-note {
+  color: var(--text-dim);
+  font-size: 0.92rem;
+  margin: 0 0 0.4rem;
+  max-width: 78ch;
+}
+
+.field-legend {
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.check-stack {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.shortlist-lead {
+  margin: 1rem 0 0.6rem;
+  color: var(--text-dim);
+}
+
+.candidates {
+  display: grid;
+  gap: 0.8rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr));
+}
+
+.candidate {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  padding: 0.85rem 1rem;
+}
+.candidate-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+.candidate-head h3 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+.candidate-meta {
+  color: var(--text-dim);
+  font-size: 0.82rem;
+  flex: 1 1 auto;
+}
+#app .pin-btn {
+  padding: 0.3rem 0.7rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+}
+/* Same specificity trap as the selected role tab, same fix. */
+#app .pin-btn[aria-pressed='true'],
+#app .pin-btn[aria-pressed='true']:hover:not(:disabled) {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+}
+.reasons {
+  list-style: none;
+  margin: 0.6rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.3rem;
+}
+.reasons li {
+  font-size: 0.92rem;
+  padding-left: 1.1rem;
+  position: relative;
+}
+.reasons li::before {
+  content: '\2713';
+  position: absolute;
+  left: 0;
+  color: var(--ok-text);
+}
+.candidate-caveat {
+  margin: 0.7rem 0 0;
+  font-size: 0.9rem;
+  border-top: 1px solid var(--border);
+  padding-top: 0.55rem;
+  color: var(--text);
+}
+.excluded-panel,
+.chooser-scope {
+  margin-top: 0.9rem;
+}
+
+/* ── Provenance chips in the comparison tray ───────────────────────────── */
+
+.provenance {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  white-space: nowrap;
+}
+.provenance-derived,
+.provenance-measured {
+  color: var(--ok-text);
+  border-color: color-mix(in oklab, var(--ok) 45%, var(--border));
+}
+.provenance-pending {
+  color: var(--text-dim);
+}
+.provenance-unavailable {
+  color: var(--warn-text);
+  border-color: color-mix(in oklab, var(--warn) 45%, var(--border));
+}
+#app .unpin-btn {
+  display: block;
+  margin-top: 0.3rem;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 500;
+}
+
+/* ── Family markers and wire bars ──────────────────────────────────────── */
+
+/*
+ * A family marker is a colour AND the family word printed beside it. It groups
+ * nineteen rows at a glance; it encodes no magnitude, and NIST category is
+ * deliberately left as a bare label because the categories are not aligned
+ * across families and a bar would imply they were a continuous scale.
+ */
+.family-dot {
+  display: inline-block;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  margin-right: 0.4rem;
+  background: var(--text-dim);
+}
+.family-dot[data-family='ML-KEM'] {
+  background: #7dd3fc;
+}
+.family-dot[data-family='ML-DSA'] {
+  background: #a5b4fc;
+}
+.family-dot[data-family='SLH-DSA'] {
+  background: #fcd34d;
+}
+.family-dot[data-family='Falcon / FN-DSA'] {
+  background: #86efac;
+}
+.family-dot[data-family='Hybrid'] {
+  background: #f9a8d4;
+}
+
+/* The bar encodes the row's wire total against the largest derived one. */
+.wire-bar {
+  display: block;
+  height: 4px;
+  margin-top: 0.3rem;
+  border-radius: 2px;
+  background: color-mix(in oklab, var(--accent) 22%, var(--surface-2));
+  max-width: 8rem;
+}
+.wire-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+/* ── The matrix at table widths: keep the row label in view ────────────── */
+
+/*
+ * The scheme name is the only thing that makes a cell meaningful, and at
+ * mid widths the table scrolls horizontally away from it. Sticking the row
+ * header to the left edge of the scroller keeps the two together.
+ */
+#matrix .table-wrap th[scope='row'] {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--surface);
+}
+#matrix .table-wrap thead th:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--surface-2);
+}
+
+/* The column names inside each cell, for the stacked layout only. */
+.cell-label {
+  display: none;
+}
+
+#app .pin-row {
+  display: block;
+  margin-top: 0.4rem;
+}
+
+/* ── The matrix on a phone: cards, not a seven-column scroll ───────────── */
+
+/*
+ * Below 760px the matrix stops being a table to look at and becomes one card
+ * per scheme. The review's measurement was the argument: a 310px visible area
+ * over a 1,125px scroll width means a reader sees a quarter of a row and cannot
+ * hold the scheme name and its size in view at once.
+ *
+ * The ARIA roles on the table elements are what make this safe. `display: block`
+ * strips a table's implicit semantics in every engine, so `role="table"`,
+ * `"rowgroup"`, `"row"`, `"columnheader"`, `"rowheader"` and `"cell"` are
+ * declared explicitly in `table.ts` and survive the change.
+ */
+@media (max-width: 760px) {
+  #matrix .table-wrap {
+    overflow-x: visible;
+    border: none;
+  }
+  #matrix table,
+  #matrix tbody,
+  #matrix tr,
+  #matrix td,
+  #matrix th {
+    display: block;
+  }
+  #matrix thead {
+    /* The column names move into the cells; a header row of one column wide
+       would be a row of labels with nothing under them. */
+    display: none;
+  }
+  #matrix caption {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 0.7rem;
+  }
+  #matrix tbody tr {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 0.6rem;
+    background: var(--surface-2);
+    overflow: hidden;
+  }
+  #matrix tbody tr.row-group-start {
+    border-top: 2px solid var(--control-border);
+  }
+  #matrix tbody th[scope='row'] {
+    position: static;
+    background: color-mix(in oklab, var(--accent) 7%, var(--surface-2));
+    border-bottom: 1px solid var(--border);
+    font-size: 1rem;
+  }
+  #matrix tbody td {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.75rem;
+    border-bottom: 1px solid var(--border);
+    white-space: normal;
+  }
+  #matrix tbody td:last-child {
+    border-bottom: none;
+  }
+  #matrix .cell-label {
+    display: inline;
+    color: var(--text-dim);
+    font-size: 0.76rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    flex: 0 0 auto;
+  }
+  #matrix .row-note {
+    max-width: none;
+  }
+  #matrix .wire-bar {
+    max-width: 5rem;
+  }
+  #app .pin-row {
+    display: inline-block;
+    margin-top: 0.5rem;
   }
 }

@@ -286,6 +286,10 @@ export async function boot(page: Page, mode: BootMode = 'normal'): Promise<void>
   await expect(page.locator('main')).toHaveCount(1);
   await expect(page.locator('h1')).toHaveCount(1);
   await expect(page.locator('tr[data-row]')).toHaveCount(19);
+  // The chooser is the first interactive thing on the page, and the whole
+  // restructure is worth nothing if it silently stops rendering.
+  await expect(page.locator('#chooser')).toBeVisible();
+  await expect(page.locator('.role-tab')).toHaveCount(2);
 
   // The shared skip link points at an id that exists. axe's skip-link rule is
   // best-practice, not WCAG-tagged, so `withTags` never runs it — a skip link
@@ -313,8 +317,13 @@ export async function boot(page: Page, mode: BootMode = 'normal'): Promise<void>
   await expect(page.locator('#wire-kem')).toHaveValue('ml_kem768');
   await expect(page.locator('#wire-sig')).toHaveValue('ml_dsa65');
   await expect(page.locator('#bench-slow')).not.toBeChecked();
+  // Nothing is pinned and nothing is shortlisted before anything is derived.
+  await expect(page.locator('[data-tray-state="empty"]')).toBeVisible();
+  await expect(page.locator('[data-shortlist-state="waiting"]')).toBeVisible();
+  await expect(page.locator('#derive-slow')).toBeVisible();
+  await expect(page.locator('#stop-slow')).toBeHidden();
 
-  // Both disclosures ship SHUT. The gate this pattern replaces opened every
+  // Every disclosure ships SHUT. The gate this pattern replaces opened every
   // one from script before its only scan.
   await expect(page.locator('details[open]')).toHaveCount(0);
 
@@ -665,11 +674,33 @@ export async function startDerivation(page: Page): Promise<void> {
 
 // ── Waiting on the derivation ───────────────────────────────────────────────
 
-/** Every row has reached a terminal state, so the DOM has stopped moving. */
-export async function waitForMatrixSettled(page: Page): Promise<void> {
+/**
+ * The sixteen core sets are in and the three slow ones are deferred.
+ *
+ * This is the state a visitor actually arrives at, about two seconds in, and
+ * it is the one the chooser is usable from.
+ */
+export async function waitForCoreReady(page: Page): Promise<void> {
   await expect(page.locator('tr[data-state="pending"], tr[data-state="deriving"]')).toHaveCount(0, {
     timeout: 300_000,
   });
+  await expect(page.locator('tr[data-state="derived"]')).toHaveCount(16);
+}
+
+/**
+ * Nothing is left to derive: no row is queued, measuring, or DEFERRED.
+ *
+ * The deferred rows matter here. They are `unavailable`, which looks terminal,
+ * so a wait that only checked for pending and deriving returned the instant the
+ * core pass finished and every assertion after it raced the slow derivation it
+ * was supposed to be waiting for. A skipped row IS terminal and is allowed.
+ */
+export async function waitForMatrixSettled(page: Page): Promise<void> {
+  await expect(
+    page.locator(
+      'tr[data-state="pending"], tr[data-state="deriving"], tr[data-code="DERIVE_DEFERRED"]'
+    )
+  ).toHaveCount(0, { timeout: 300_000 });
 }
 
 export async function waitForRowState(page: Page, schemeId: string, state: string): Promise<void> {
@@ -718,31 +749,81 @@ export async function driveAllStates(page: Page, label: string): Promise<void> {
   await expect(page.locator('a.cl-skip-link')).toBeFocused();
   await scanAt('the shared skip link focused, slid in from top:-3rem');
 
-  // ── The last slow set measuring, everything before it settled ───────────
-  // The three SLH-DSA `s` sets derive last and SLH-DSA-256s signs in seconds,
-  // so this is a window of seconds in which exactly one row can change. It is
-  // the only place `.state-deriving` — the per-row "measuring..." the brief
-  // asks for — is on screen. The derivation is released HERE rather than at
-  // load, so reaching that window is a wait rather than a race.
+  // ── Core ready: sixteen derived, three deferred, a shortlist on screen ──
   await startDerivation(page);
-  await waitForRowState(page, 'slh_dsa_sha2_256s', 'deriving');
-  await expect(page.locator('tr[data-state="pending"]')).toHaveCount(0);
-  await scanAt('the last slow set measuring, the other eighteen rows settled');
-
-  // ── Everything derived ──────────────────────────────────────────────────
-  await waitForMatrixSettled(page);
-  await expect(page.locator('tr[data-state="derived"]')).toHaveCount(19);
-  await expect(page.locator('#skip-slow')).toBeDisabled();
+  await waitForCoreReady(page);
+  await expect(page.locator('tr[data-code="DERIVE_DEFERRED"]')).toHaveCount(3);
+  await expect(page.locator('[data-shortlist-state="ready"]')).toBeVisible();
+  await expect(page.locator('.candidate')).not.toHaveCount(0);
   // The misquote panel settles with the evidence, not before it.
   await expect(page.locator('[data-verdict="pending"]')).toHaveCount(0);
   await expect(page.locator('[data-verdict="contradicted"]')).toHaveCount(4);
   await expect(page.locator('[data-verdict="not-derivable"]')).toHaveCount(1);
-  await scanAt('all nineteen parameter sets derived, four misquotes contradicted');
+  await scanAt('core ready — sixteen derived, three deferred, a shortlist rendered');
 
-  // ── The two disclosures, opened the way a reader opens them ─────────────
-  await page.locator('#intro details > summary').click();
-  await expect(page.locator('#intro details[open]')).toHaveCount(1);
-  await scanAt('the "why derive them" disclosure open');
+  // ── The chooser, driven through every control it owns ───────────────────
+  await page.locator('#role-signature').click();
+  await expect(page.locator('#role-signature')).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('[data-shortlist-state="ready"]')).toBeVisible();
+  await scanAt('the signature track, with its own shortlist');
+
+  // A tight wire budget for signatures is satisfied by exactly one thing, and
+  // that IS the answer rather than a bug: at category 1, Falcon's padded
+  // encoding is the only post-quantum signature that fits under twenty times
+  // the classical pair.
+  await page.selectOption('#c-category', '1');
+  await page.selectOption('#c-wire', 'tight');
+  await page.selectOption('#c-signing', 'rare');
+  await expect(page.locator('.candidate')).toHaveCount(1);
+  await scanAt('a tight wire budget — a shortlist of one, and it says why');
+
+  await page.locator('#c-sidechannel').check();
+  await scanAt('a side-channel-sensitive environment, with Falcon excluded');
+
+  // ...which leaves nothing, and an empty shortlist is a real state that has
+  // to render, name the closest miss, and pass the gate like any other.
+  await expect(page.locator('[data-shortlist-state="empty"]')).toBeVisible();
+  await scanAt('constraints nothing survives, with the closest miss named');
+
+  await page.locator('#c-sidechannel').uncheck();
+  await page.selectOption('#c-wire', 'any');
+  await page.selectOption('#c-signing', 'frequent');
+  await expect(page.locator('.candidate')).not.toHaveCount(0);
+
+  await page.locator('.excluded-panel > summary').first().click();
+  await scanAt('the excluded list opened, every exclusion with its reason');
+
+  // ── Pinning, and the comparison tray ────────────────────────────────────
+  await page.locator('.candidate .pin-btn').first().click();
+  await page.locator('.candidate .pin-btn').nth(1).click();
+  await expect(page.locator('[data-tray-state="filled"]')).toBeVisible();
+  await scanAt('two candidates pinned into the comparison tray');
+
+  await page.locator('#matrix tr[data-row="ml_dsa44"] .pin-row').click();
+  await expect(page.locator('[data-tray-state="filled"]')).toBeVisible();
+  await scanAt('a third pinned from the matrix itself');
+
+  await page.locator('.unpin-btn').first().click();
+  await scanAt('one removed from the tray');
+
+  await page.locator('#role-kem').click();
+  await expect(page.locator('#role-kem')).toHaveAttribute('aria-selected', 'true');
+
+  // ── The deferred sets, measured on request ──────────────────────────────
+  await page.locator('#derive-slow').click();
+  await expect(page.locator('#stop-slow')).toBeVisible();
+  await waitForRowState(page, 'slh_dsa_sha2_256s', 'deriving');
+  await scanAt('the last deferred set measuring, on request');
+
+  await waitForMatrixSettled(page);
+  await expect(page.locator('tr[data-state="derived"]')).toHaveCount(19);
+  await scanAt('all nineteen parameter sets derived');
+
+  // ── The disclosures, opened the way a reader opens them ────────────────
+  await page.locator('.chooser-scope > summary').click();
+  await expect(page.locator('.chooser-scope[open]')).toHaveCount(1);
+  await expect(page.locator('#cannot-decide li')).not.toHaveCount(0);
+  await scanAt('the "what this cannot decide" disclosure open');
 
   await page.locator('#log-panel > summary').click();
   await expect(page.locator('#log-panel[open]')).toHaveCount(1);
@@ -829,18 +910,12 @@ export async function driveAllStates(page: Page, label: string): Promise<void> {
  * skipping has to stay visible on the row that was skipped.
  */
 export async function driveSkippedState(page: Page, label: string): Promise<void> {
-  // Pressed BEFORE the derivation is released, so the worker sees the flag
-  // before it reaches the first slow set and all three are skipped. Pressing
-  // mid-run is also honest — a set already signing cannot be interrupted — but
-  // it is not deterministic, and a gate whose expected count depends on how
-  // fast the machine is teaches nothing when it goes red.
-  await page.locator('#skip-slow').click();
-  await expect(page.locator('#skip-slow')).toBeDisabled();
+  // The three slow sets are DEFERRED by default, so this is the state a reader
+  // arrives at without doing anything — and the one the chooser works from.
   await startDerivation(page);
-  await waitForMatrixSettled(page);
-  await expect(page.locator('tr[data-code="DERIVE_SKIPPED"]')).toHaveCount(3);
-  await expect(page.locator('tr[data-state="derived"]')).toHaveCount(16);
-  await scan(page, `${label} / three slow sets skipped by the reader`);
+  await waitForCoreReady(page);
+  await expect(page.locator('tr[data-code="DERIVE_DEFERRED"]')).toHaveCount(3);
+  await scan(page, `${label} / three slow sets deferred until asked for`);
 
   // And the claim checker refuses to answer for one of them from the published
   // figure, which is the whole argument of the page with the comfort removed.
@@ -853,7 +928,7 @@ export async function driveSkippedState(page: Page, label: string): Promise<void
 /** Every row unavailable, because this browser has no Worker. */
 export async function driveWorkerlessState(page: Page, label: string): Promise<void> {
   await expect(page.locator('tr[data-code="WORKER_UNAVAILABLE"]')).toHaveCount(19);
-  await expect(page.locator('#skip-slow')).toBeDisabled();
+  await expect(page.locator('#derive-slow')).toBeDisabled();
   await expect(page.locator('#matrix-status')).toContainText('WORKER_UNAVAILABLE');
   await scan(page, `${label} / no Web Worker — nineteen rows showing no figure, and why`);
 }

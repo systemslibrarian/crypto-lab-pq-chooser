@@ -12,15 +12,21 @@
  * main thread that is nine seconds of a page that does not scroll, does not
  * respond to a click, and cannot paint the very rows it is computing.
  *
- * ── How "skip slow sets" reaches a worker that is busy ────────────────────
- * A worker running a synchronous `sign()` processes no messages, so a skip
- * request cannot interrupt one in flight. The derivation loop therefore yields
- * to the macrotask queue between parameter sets, which is where a queued
- * `skip-slow` gets delivered, and the flag is checked BEFORE each slow set
- * starts. The three slow sets run last, so a reader who presses skip at any
- * point during the first sixteen rows skips all three. A press that lands while
- * a slow set is already signing cannot stop that one: it finishes, its figure is
- * real, and it is shown. The rows say which happened.
+ * ── Two passes, because 85% of the wait buys 16% of the table ─────────────
+ * `derive-matrix` runs the sixteen CORE sets and then posts `core-ready`. The
+ * three SLH-DSA `s` sets are left at `DERIVE_DEFERRED` until a `derive-slow`
+ * request arrives. Measured here: core 2.0 s, the slow tail a further 11-12 s;
+ * a reviewer's browser measured 24.0 s for the lot. Making a visitor wait
+ * through that before the page is usable is the whole reason the chooser was
+ * unreachable in the first viewport.
+ *
+ * ── How "stop" reaches a worker that is busy ──────────────────────────────
+ * A worker running a synchronous `sign()` processes no messages, so a stop
+ * request cannot interrupt one in flight. The slow loop therefore yields to the
+ * macrotask queue between parameter sets, which is where a queued `skip-slow`
+ * gets delivered, and the flag is checked BEFORE each set starts. A press that
+ * lands while a set is already signing cannot stop that one: it finishes, its
+ * figure is real, and it is shown. The rows say which happened.
  */
 
 import { SCHEMES, SLOW_SCHEME_IDS } from './schemes';
@@ -29,7 +35,7 @@ import { FAILURE_CODES, FAILURE_CAUSES } from './codes';
 import { runKemFixture } from './kem-fixture';
 import { computeHandshake, computeHybridOverhead } from '../wire/handshake';
 import { runBenchmark } from '../bench/runner';
-import type { DerivationEvent, DerivedRow, WorkerRequest, WorkerResponse } from './types';
+import type { DerivedRow, WorkerRequest, WorkerResponse } from './types';
 
 const post = (message: WorkerResponse): void => {
   (self as unknown as Worker).postMessage(message);
@@ -43,73 +49,80 @@ const yieldToEventLoop = (): Promise<void> =>
 
 let skipSlow = false;
 let matrixStarted = false;
+let slowStarted = false;
+/** Wall-clock zero for the whole derivation, so the log's `atMs` is one scale. */
+let t0 = 0;
+
+const unavailableRow = (schemeId: string, code: (typeof FAILURE_CODES)[keyof typeof FAILURE_CODES]): DerivedRow => ({
+  schemeId,
+  state: { status: 'unavailable', code, cause: FAILURE_CAUSES[code] },
+});
+
+/** Derive one set and post its row and log entry. Never throws. */
+async function deriveOne(schemeId: string, label: string): Promise<void> {
+  post({ kind: 'row', row: { schemeId, state: { status: 'deriving' } }, event: null });
+  // Deliver that message, and pick up any queued stop, before blocking.
+  await yieldToEventLoop();
+  try {
+    const sizes = deriveScheme(schemeId);
+    post({
+      kind: 'row',
+      row: { schemeId, state: { status: 'derived', sizes } },
+      event: { schemeId, label, atMs: performance.now() - t0, elapsedMs: sizes.elapsedMs, outcome: 'derived' },
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    post({
+      kind: 'row',
+      row: {
+        schemeId,
+        state: {
+          status: 'unavailable',
+          code: FAILURE_CODES.DERIVE_FAILED,
+          cause: `${FAILURE_CAUSES[FAILURE_CODES.DERIVE_FAILED]}: ${message}`,
+        },
+      },
+      event: { schemeId, label, atMs: performance.now() - t0, elapsedMs: 0, outcome: 'failed' },
+    });
+  }
+  await yieldToEventLoop();
+}
 
 async function deriveMatrix(): Promise<void> {
   if (matrixStarted) return;
   matrixStarted = true;
-  const t0 = performance.now();
+  t0 = performance.now();
 
   for (const scheme of SCHEMES) {
-    const isSlow = SLOW_SCHEME_IDS.includes(scheme.id);
-    if (isSlow && skipSlow) {
-      const row: DerivedRow = {
-        schemeId: scheme.id,
-        state: {
-          status: 'unavailable',
-          code: FAILURE_CODES.DERIVE_SKIPPED,
-          cause: FAILURE_CAUSES[FAILURE_CODES.DERIVE_SKIPPED],
-        },
-      };
-      const event: DerivationEvent = {
-        schemeId: scheme.id,
-        label: scheme.label,
-        atMs: performance.now() - t0,
-        elapsedMs: 0,
-        outcome: 'skipped',
-      };
-      post({ kind: 'row', row, event });
+    if (SLOW_SCHEME_IDS.includes(scheme.id)) {
+      // Deferred, not skipped, and not blank: the row says it is measured on
+      // request and why.
+      post({ kind: 'row', row: unavailableRow(scheme.id, FAILURE_CODES.DERIVE_DEFERRED), event: null });
       continue;
     }
+    await deriveOne(scheme.id, scheme.label);
+  }
 
-    post({ kind: 'row', row: { schemeId: scheme.id, state: { status: 'deriving' } }, event: null });
-    // Deliver that message and pick up any queued skip before blocking.
-    await yieldToEventLoop();
+  post({ kind: 'core-ready', coreMs: performance.now() - t0 });
+}
 
-    try {
-      const sizes = deriveScheme(scheme.id);
+async function deriveSlow(): Promise<void> {
+  if (slowStarted) return;
+  slowStarted = true;
+  skipSlow = false;
+
+  for (const id of SLOW_SCHEME_IDS) {
+    const scheme = SCHEMES.find((s) => s.id === id);
+    if (!scheme) continue;
+    if (skipSlow) {
       post({
         kind: 'row',
-        row: { schemeId: scheme.id, state: { status: 'derived', sizes } },
-        event: {
-          schemeId: scheme.id,
-          label: scheme.label,
-          atMs: performance.now() - t0,
-          elapsedMs: sizes.elapsedMs,
-          outcome: 'derived',
-        },
+        row: unavailableRow(id, FAILURE_CODES.DERIVE_SKIPPED),
+        event: { schemeId: id, label: scheme.label, atMs: performance.now() - t0, elapsedMs: 0, outcome: 'skipped' },
       });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      post({
-        kind: 'row',
-        row: {
-          schemeId: scheme.id,
-          state: {
-            status: 'unavailable',
-            code: FAILURE_CODES.DERIVE_FAILED,
-            cause: `${FAILURE_CAUSES[FAILURE_CODES.DERIVE_FAILED]}: ${message}`,
-          },
-        },
-        event: {
-          schemeId: scheme.id,
-          label: scheme.label,
-          atMs: performance.now() - t0,
-          elapsedMs: 0,
-          outcome: 'failed',
-        },
-      });
+      continue;
     }
-    await yieldToEventLoop();
+    await deriveOne(id, scheme.label);
   }
 
   post({ kind: 'matrix-done', totalMs: performance.now() - t0 });
@@ -120,6 +133,10 @@ self.onmessage = (event: MessageEvent<WorkerRequest>): void => {
   switch (request.kind) {
     case 'derive-matrix':
       void deriveMatrix();
+      return;
+
+    case 'derive-slow':
+      void deriveSlow();
       return;
 
     case 'skip-slow':

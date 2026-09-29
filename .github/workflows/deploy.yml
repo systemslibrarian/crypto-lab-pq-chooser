@@ -49,16 +49,26 @@ jobs:
       - name: Build (typecheck gates the build)
         run: npm run build
 
-      - name: Install Playwright browser
+      - name: Install Playwright browsers
         # Deliberately NOT `--with-deps`. That apt step wedged 547 runs across
-        # this fleet; ubuntu-latest already carries what headless Chromium needs.
-        run: npx playwright install chromium
+        # this fleet; ubuntu-latest already carries what headless Chromium and
+        # Firefox need. WebKit is NOT installed here for the same reason -- it
+        # is the one engine that genuinely requires those system packages -- so
+        # its smoke project runs locally (`npm run test:smoke:webkit`) and the
+        # gap is stated in the README rather than papered over.
+        run: npx playwright install chromium firefox
 
       - name: Accessibility gate (axe-core, WCAG A/AA, desktop and 380px)
         run: npm run test:a11y
 
       - name: Claims suite (the page tells the truth, incl. the negative claim)
         run: npm run test:claims
+
+      - name: Layout gate (first viewport, phone matrix, anchor offsets)
+        run: npm run test:layout
+
+      - name: Cross-engine smoke (Chromium + Firefox)
+        run: npm run test:smoke
 
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5
@@ -77,9 +87,34 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+    outputs:
+      page_url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
         uses: actions/deploy-pages@v5
+
+  # What the gate above cannot see: the DEPLOYED artefact. `vite preview` and
+  # GitHub Pages serve the project subpath and the module worker differently
+  # enough that a wrong `base` or a worker chunk that 404s is green locally and
+  # broken live -- and the failure is silent, because the page renders and then
+  # simply never derives anything. This drives the real URL after publishing.
+  smoke:
+    needs: deploy
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install chromium
+      - name: Smoke the published site
+        env:
+          PQ_CHOOSER_BASE_URL: ${{ needs.deploy.outputs.page_url }}
+        run: npm run test:smoke:live
 
   # Dependabot only. `needs: build` is the whole safety argument: the gate
   # decides, not the version number. A major that actually breaks this lab fails

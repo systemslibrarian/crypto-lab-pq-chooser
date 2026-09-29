@@ -15,64 +15,83 @@ export function renderHero(): string {
         <h1 class="cl-hero-title">PQ Chooser</h1>
         <p class="cl-hero-sub">ML-KEM · ML-DSA · FN-DSA · SLH-DSA · FIPS 203/204/205</p>
         <p class="cl-hero-desc">
-          Derives every public-key, ciphertext and signature size across nineteen post-quantum
-          parameter sets from real library output in your browser, then benchmarks them and prices
-          a TLS handshake from the bytes it is holding.
+          Derives every key, ciphertext and signature size across nineteen post-quantum parameter
+          sets by running the real algorithms in your browser, then shortlists two you should
+          investigate.
         </p>
       </div>
       <aside class="cl-hero-why" aria-label="Why it matters">
         <span class="cl-hero-why-label">WHY IT MATTERS</span>
         <p class="cl-hero-why-text">
-          Migration decisions get made from tables somebody typed in years ago. A typed-in number
-          cannot tell you which of its digits is a range — three labs in this suite printed
-          Falcon’s padded signature size beside two fixed ones, and every number was right. A
-          derived one shows the difference instead of asserting it.
+          Migration decisions get made from tables somebody typed in years ago, and a typed-in
+          number cannot tell you which of its digits is a range. A derived one shows the
+          difference instead of asserting it.
         </p>
       </aside>
     </header>`;
 }
 
-export function renderIntro(): string {
+/**
+ * The argument for deriving figures that are already correct.
+ *
+ * Below the chooser, because it answers "can I trust these numbers?" and that
+ * is the second question a visitor has, not the first.
+ */
+export function renderIntroLong(): string {
   return `
-    <section class="card" id="intro" aria-labelledby="intro-h">
-      <span class="eyebrow">Start here</span>
-      <h2 id="intro-h">What this is</h2>
+    <section class="card" id="why-derive" aria-labelledby="why-derive-h">
+      <span class="eyebrow">The argument</span>
+      <h2 id="why-derive-h">Why derive them, when the published numbers are correct?</h2>
       <p>
-        Quantum computers, if they are ever built at the scale the attacks need, would break the
-        public-key cryptography almost every secure connection uses today. NIST has standardised
-        replacements, and there is more than one, because they trade against each other: some have
-        small keys and large signatures, some the reverse, some are fast to verify and slow to
-        sign. Choosing between them is mostly an argument about bytes and milliseconds.
+        They are correct. A fleet-wide audit checked every hardcoded ML-KEM, ML-DSA, Falcon and
+        SLH-DSA size across 212 repositories against FIPS 203, 204, 205 and Falcon v1.2 and found
+        zero mismatches. Being right is not the problem.
       </p>
       <p>
-        This page is that argument with the numbers filled in — but filled in <em>here</em>, by
-        running the algorithms rather than by copying a table. Every figure you are about to see
-        was produced a few seconds ago in this tab.
+        The problem is that being right is not the same as being <em>derived</em>. Three labs
+        printed Falcon-512’s signature size as a bare integer beside ML-DSA-44’s and
+        SLH-DSA-128s’s. All three numbers were accurate. But the Falcon figure is the
+        <em>padded</em> encoding, and raw compressed Falcon-512 signatures vary from one signature
+        to the next — and nothing in a row of integers could say which of the three was a
+        range. (This page does not print those three numbers here either. They are in the matrix
+        above, derived, where the Falcon row renders as a range because it measured one.)
       </p>
-      <details>
-        <summary>Why derive them, when the published numbers are correct?</summary>
-        <p>
-          They are correct. A fleet-wide audit checked every hardcoded ML-KEM, ML-DSA, Falcon and
-          SLH-DSA size across 212 repositories against FIPS 203, 204, 205 and Falcon v1.2 and found
-          zero mismatches. Being right is not the problem.
-        </p>
-        <p>
-          The problem is that being right is not the same as being <em>derived</em>. Three labs
-          printed Falcon-512’s signature size as a bare integer beside ML-DSA-44’s and
-          SLH-DSA-128s’s. All three numbers were accurate. But the Falcon figure is the
-          <em>padded</em> encoding, and raw compressed Falcon-512 signatures vary from one
-          signature to the next — and nothing in a row of integers could say which of the three
-          was a range. (This page does not print those three numbers here either. They are in the
-          table below, derived, where the Falcon row renders as a range because it measured one.)
-        </p>
-        <p>
-          A derived figure gets that distinction for free. The padded and unpadded Falcon variants
-          are separate exports of the library, so a table that calls both of them shows the
-          difference rather than asserting it. That is the whole argument for this page, and the
-          table below is it.
-        </p>
-      </details>
+      <p>
+        A derived figure gets that distinction for free. The padded and unpadded Falcon variants
+        are separate exports of the library, so a table that calls both of them shows the
+        difference rather than asserting it. That is the whole argument for this page, and the
+        matrix is it.
+      </p>
     </section>`;
+}
+
+/**
+ * A rail to the sections, because there are now fifteen of them.
+ *
+ * Every entry is a real fragment link, and `scroll-margin-top` on the targets
+ * keeps the sticky top bar from covering the heading it just scrolled to —
+ * which `e2e/layout.spec.ts` measures rather than assumes.
+ */
+export function renderSectionNav(): string {
+  const links: Array<[string, string]> = [
+    ['#chooser', 'Choose'],
+    ['#compare', 'Compare'],
+    ['#wire', 'Handshake bytes'],
+    ['#bench', 'Benchmark'],
+    ['#matrix', 'The matrix'],
+    ['#why-derive', 'Why derive'],
+    ['#misquote', 'Misquoted numbers'],
+    ['#claim', 'Break it yourself'],
+    ['#risk', 'Implementation risk'],
+    ['#negative', 'What it cannot see'],
+    ['#scope', 'Honest scope'],
+  ];
+  return `
+    <nav class="section-nav" aria-label="Sections of this page">
+      <ul role="list">
+        ${links.map(([href, label]) => `<li role="listitem"><a href="${href}">${escapeHTML(label)}</a></li>`).join('')}
+      </ul>
+    </nav>`;
 }
 
 export function renderRiskPanel(): string {
@@ -93,9 +112,11 @@ export function renderRiskPanel(): string {
       <span class="eyebrow">What the sizes do not say</span>
       <h2 id="risk-h">Implementation risk</h2>
       <p class="card-lead">
-        Not editorial judgement. Each row names something an implementation of that scheme has
-        actually had to deal with, and points at the demo that shows it. Two of the rows are
-        evidenced by this page’s own output.
+        Each row names something an implementation of that scheme has actually had to deal with,
+        and points at the demo that shows it. Two of the rows are evidenced by this page’s own
+        output. It is <strong>evidence-linked but not exhaustive</strong>: choosing which risks to
+        list is still an editorial act even when every row has a source, and a scheme’s absence
+        from a row is not a clean bill of health.
       </p>
       <div class="table-wrap" tabindex="0" role="region" aria-label="Implementation risk by scheme, scrollable">
         <table>

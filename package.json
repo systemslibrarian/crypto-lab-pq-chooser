@@ -11,6 +11,10 @@
     "test:watch": "vitest",
     "test:a11y": "playwright test --project=a11y",
     "test:claims": "playwright test --project=claims",
+    "test:layout": "playwright test --project=layout",
+    "test:smoke": "playwright test --project=smoke-chromium --project=smoke-firefox",
+    "test:smoke:webkit": "playwright test --project=smoke-webkit",
+    "test:smoke:live": "playwright test --project=smoke-chromium",
     "test:e2e:all": "playwright test"
   },
   "dependencies": {

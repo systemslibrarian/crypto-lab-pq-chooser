@@ -31,13 +31,14 @@ export function renderWirePanel(): string {
   return `
     <section class="card" id="wire" aria-labelledby="wire-h">
       <span class="eyebrow">On the wire</span>
-      <h2 id="wire-h">What one handshake actually costs</h2>
+      <h2 id="wire-h">PQ-dependent bytes in a TLS 1.3 handshake</h2>
       <p class="card-lead">
-        Bytes for one TLS 1.3 key exchange plus one server authentication, taken from the real
-        key share, ciphertext, public key and signature this page just produced. It is not a full
-        handshake: framing, extension lists, the certificate chain above the leaf and the Finished
-        MACs are all excluded. What it covers is the part that changes by kilobytes when you move
-        off X25519 and Ed25519 — the part the choice decides.
+        <strong>Not a whole handshake — the part your choice of scheme changes.</strong> One key
+        exchange plus one server authentication, taken from the real key share, ciphertext, public
+        key and signature this page just produced. Framing, extension and cipher-suite lists, the
+        certificate chain above the leaf, the X.509 wrapper, session tickets and the Finished MACs
+        are all excluded; a real ClientHello is several hundred bytes before a key share is added.
+        What is here is the part that moves by kilobytes when you leave X25519 and ECDSA behind.
       </p>
       <div class="controls">
         <div class="field">

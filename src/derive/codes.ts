@@ -13,11 +13,29 @@
  */
 export const FAILURE_CODES = {
   /**
-   * The reader pressed "Skip slow sets". The three SLH-DSA `s` parameter sets
-   * are abandoned and the rows say so. NEVER replaced with a spec number and
-   * never left blank — the cost of skipping has to stay visible on the row that
-   * was skipped, or skipping quietly re-creates the typed-in-number problem
-   * this whole page exists to remove.
+   * The three SLH-DSA `s` parameter sets, which are not derived until asked for.
+   *
+   * THE SCHEDULING DECISION, AND THE MEASUREMENT BEHIND IT. These sets were
+   * once derived eagerly behind everything else. Measured in Chromium on the
+   * machine this was written on, the sixteen core sets land in about 2.0 s and
+   * these three add a further 11-12 s — 85% of the wait for 16% of the table.
+   * A reviewer's browser measured 24.0 s for the whole matrix. So the core
+   * comparison is derived on load and these are derived on request, which is
+   * what the brief's verification item pre-authorised: "if a mid-range Android
+   * takes 20 s rather than 5, the s-variants may need to be derive-on-click".
+   *
+   * The mid-range phone itself remains UNMEASURED, and is still the open
+   * verification item. CDP CPU throttling was tried and does not reach a
+   * dedicated worker (1x, 4x and 6x all produced the same ~13 s), so it is not
+   * a proxy for one.
+   */
+  DERIVE_DEFERRED: 'DERIVE_DEFERRED',
+
+  /**
+   * The reader started the slow sets and then stopped them. The rows say so.
+   * NEVER replaced with a spec number and never left blank — the cost of
+   * abandoning has to stay visible on the row that was abandoned, or it quietly
+   * re-creates the typed-in-number problem this whole page exists to remove.
    */
   DERIVE_SKIPPED: 'DERIVE_SKIPPED',
 
@@ -86,6 +104,8 @@ export type FailureCode = (typeof FAILURE_CODES)[keyof typeof FAILURE_CODES];
  * reads this map, so a missing entry is a type error rather than an empty cell.
  */
 export const FAILURE_CAUSES: Record<FailureCode, string> = {
+  [FAILURE_CODES.DERIVE_DEFERRED]:
+    'not measured yet — this set signs in hundreds of milliseconds to seconds, so it is derived only when you ask for it',
   [FAILURE_CODES.DERIVE_SKIPPED]:
     'not measured, skipped by you — this set was abandoned before it was derived',
   [FAILURE_CODES.DERIVE_FAILED]:
