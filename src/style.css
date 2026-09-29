@@ -465,6 +465,21 @@ table {
   font-size: 0.88rem;
 }
 
+/*
+ * Room for the row header, which is the column that carries a name AND a note.
+ *
+ * Auto table layout hands a column only what the rest of the row can spare, so
+ * on a phone the scheme names wrapped to two lines and their notes to ten. The
+ * answer for a data table at narrow widths is to let it be wide and scroll,
+ * which this one is already set up to do -- `tabindex`, `role="region"` and a
+ * label, so the scroll is reachable from the keyboard. Naming a floor for the
+ * header column is what actually buys the room; a floor on the TABLE bought
+ * nothing, because auto layout had already made it wider than that.
+ */
+.table-wrap th[scope='row'] {
+  min-width: 13rem;
+}
+
 caption {
   text-align: left;
   padding: 0.7rem 0.85rem;
@@ -510,7 +525,7 @@ td.numeric {
   font-size: 0.78rem;
   line-height: 1.4;
   margin-top: 0.15rem;
-  max-width: 44ch;
+  max-width: 38ch;
 }
 
 /* ── The derivation log ─────────────────────────────────────────────────── */

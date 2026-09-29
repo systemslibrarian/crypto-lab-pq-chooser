@@ -184,7 +184,9 @@ test.describe('the misquote panel is settled by the page’s own output', () => 
     await derivedPage(page);
     const observed = page.locator('[data-misquote="5"] .observed');
     expect(await observed.getAttribute('data-verdict')).toBe('not-derivable');
-    await expect(observed).toContainText('not derived here');
+    // The row says it was not derived, and names where it came from instead.
+    await expect(observed).toContainText('Not derived here');
+    await expect(observed).toContainText('cited from crypto-lab-multivariate');
   });
 
   test('no verdict is left pending once the evidence exists', async ({ page }) => {

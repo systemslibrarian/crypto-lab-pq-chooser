@@ -53,10 +53,9 @@ export function resolveMisquote(
   const check = row.check;
 
   if (check.kind === 'cited') {
-    return {
-      status: 'not-derivable',
-      observed: `not derived here — cited from ${check.source}`,
-    };
+    // The label already reads "Not derived here"; repeating it here printed
+    // the phrase twice on the row.
+    return { status: 'not-derivable', observed: `cited from ${check.source}` };
   }
 
   if (check.kind === 'value') {
