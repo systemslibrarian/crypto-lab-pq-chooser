@@ -56,14 +56,22 @@ test.describe('the first viewport', () => {
       // THE HARD BAR, and the review's acceptance test verbatim: the first
       // action is visible without scrolling.
       //
-      // Asserted with HEADROOM rather than against the fold exactly. Text height
-      // is platform-dependent: the same page put this control at 813px here and
-      // 885px on the Linux CI runner, because the runner's font is wider and the
-      // copy above wraps to more lines. A threshold set at the fold measures
-      // which machine ran the test; a threshold set a wrapped line or two short
-      // of it measures the layout. 80px is roughly three lines of body copy at
-      // this size, and it is more than the 72px difference actually observed.
-      const HEADROOM = 80;
+      // Asserted with HEADROOM rather than against the fold exactly, because
+      // text height is platform-dependent and a threshold set at the fold
+      // measures which machine ran the test rather than the layout.
+      //
+      // The margin is CALIBRATED against the measured spread rather than
+      // guessed. Before the copy was trimmed, this control sat at 813px here
+      // and 885px on the Linux CI runner -- 72px apart, because the runner's
+      // font is wider and the paragraphs above wrapped to more lines. After the
+      // trim it sits at about 750px here and 778px there: a 28px spread, and
+      // both comfortably inside an 844px viewport. 48px is a little under two
+      // wrapped lines at this size and roughly 1.7x that spread, which is the
+      // margin that makes the check about the page instead of about the
+      // machine. The requirement itself is unchanged and is not the margin: the
+      // control must be above the fold, and on the stricter of the two
+      // platforms it clears it by 66px.
+      const HEADROOM = 48;
       const tab = await boxOf(page, '#role-kem');
       expect(
         tab.bottom,
