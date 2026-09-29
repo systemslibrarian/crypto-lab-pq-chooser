@@ -62,7 +62,7 @@ export function renderChooserPanel(c: Constraints): string {
         <div class="field">
           <label for="c-wire">Wire budget</label>
           <select id="c-wire">
-            <option value="tight"${c.wireBudget === 'tight' ? ' selected' : ''}>tight — embedded, constrained links</option>
+            <option value="tight"${c.wireBudget === 'tight' ? ' selected' : ''}>tight — embedded</option>
             <option value="moderate"${c.wireBudget === 'moderate' ? ' selected' : ''}>moderate — ordinary TLS</option>
             <option value="any"${c.wireBudget === 'any' ? ' selected' : ''}>no real limit</option>
           </select>
@@ -70,8 +70,8 @@ export function renderChooserPanel(c: Constraints): string {
         <div class="field" data-role-only="signature">
           <label for="c-signing">How often you sign</label>
           <select id="c-signing">
-            <option value="frequent"${c.signingFrequency === 'frequent' ? ' selected' : ''}>frequently — per request or per session</option>
-            <option value="rare"${c.signingFrequency === 'rare' ? ' selected' : ''}>rarely — per release, offline</option>
+            <option value="frequent"${c.signingFrequency === 'frequent' ? ' selected' : ''}>frequently — per request</option>
+            <option value="rare"${c.signingFrequency === 'rare' ? ' selected' : ''}>rarely — per release</option>
           </select>
         </div>
         <div class="field" data-role-only="signature">

@@ -352,10 +352,18 @@ body {
   border-color: var(--text);
 }
 
+#app select,
+#app input[type='text'],
+#app input[type='number'] {
+  max-width: 100%;
+}
+
 #app select {
   /* A styled select needs its own chevron: `appearance: none` removes the
      platform one and leaves nothing behind. */
   appearance: none;
+  /* Truncate rather than push: the full text is still in the open dropdown. */
+  text-overflow: ellipsis;
   padding-right: 2.1rem;
   background-image: linear-gradient(45deg, transparent 50%, var(--text) 50%),
     linear-gradient(135deg, var(--text) 50%, transparent 50%);
@@ -380,6 +388,17 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  /*
+   * A flex item's automatic minimum size is its MIN-CONTENT width, and a
+   * `<select>`'s min-content is its longest option -- so a field with a wordy
+   * option refuses to shrink and pushes the document sideways. It did: the CI
+   * runner's font metrics are wider than this machine's, so the signature
+   * track's "frequently - per request or per session" overflowed a 380px
+   * viewport on Linux while passing locally. `min-width: 0` lets it shrink;
+   * `max-width: 100%` stops it exceeding its column either way.
+   */
+  min-width: 0;
+  max-width: 100%;
 }
 
 .field > label {

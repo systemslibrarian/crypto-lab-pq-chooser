@@ -213,3 +213,51 @@ test.describe('screenshots, as artifacts rather than as an oracle', () => {
     });
   }
 });
+
+test.describe('nothing pushes the document sideways, at any phone width', () => {
+  /**
+   * The a11y gate already checks reflow at 380px. This checks it at 320 and 360
+   * as well, and exists because reflow is the one composition failure whose
+   * threshold moves with the platform: a `<select>` is sized by its longest
+   * option, and the CI runner's font metrics are wider than this machine's, so
+   * a chooser field that fitted 380px locally overflowed it on Linux by 19px.
+   * Passing at 320 here leaves the headroom that difference needs.
+   */
+  for (const width of [320, 360, 390]) {
+    test(`no horizontal overflow at ${width}px, on either track`, async ({ page }) => {
+      test.setTimeout(300_000);
+      await ready(page, { width, height: 844 });
+
+      const overflow = async (): Promise<{ scroll: number; client: number; widest: string } | null> =>
+        page.evaluate(() => {
+          const doc = document.documentElement;
+          if (doc.scrollWidth <= doc.clientWidth) return null;
+          const clipped = (el: Element): boolean => {
+            for (let n = el.parentElement; n && n !== doc; n = n.parentElement) {
+              if (/auto|scroll|hidden|clip/.test(getComputedStyle(n).overflowX)) return true;
+            }
+            return false;
+          };
+          const over = [...document.querySelectorAll('body *')]
+            .map((el) => ({ el, r: el.getBoundingClientRect() }))
+            .filter((x) => x.r.width > 0 && x.r.right > doc.clientWidth + 1 && !clipped(x.el))
+            .sort((a, b) => b.r.right - a.r.right)[0];
+          return {
+            scroll: doc.scrollWidth,
+            client: doc.clientWidth,
+            widest: over
+              ? `${over.el.tagName.toLowerCase()}.${(over.el.getAttribute('class') ?? '').trim()} @${Math.round(over.r.width)}px right=${Math.round(over.r.right)}`
+              : '(all clipped)',
+          };
+        });
+
+      expect(await overflow(), `key-exchange track at ${width}px`).toBeNull();
+
+      // The signature track has two more constraint fields and the wordiest
+      // options, which is where this failed.
+      await page.locator('#role-signature').click();
+      await expect(page.locator('#role-signature')).toHaveAttribute('aria-selected', 'true');
+      expect(await overflow(), `signature track at ${width}px`).toBeNull();
+    });
+  }
+});
