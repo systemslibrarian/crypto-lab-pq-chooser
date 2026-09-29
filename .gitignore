@@ -11,3 +11,8 @@ dist
 *.local
 playwright-report
 test-results
+
+# Review and working notes. Kept on disk, never committed -- they are a snapshot
+# of one conversation, and a committed one ages into a second, wrong account of
+# what the lab does. The fleet convention: sibling labs ignore chat*.md.
+chat*.md
