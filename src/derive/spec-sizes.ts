@@ -41,8 +41,9 @@ export interface SpecSizes {
   secretKey: number;
   /** Ciphertext for a KEM, signature for a signature scheme. */
   payload: number;
-  /** For Falcon's raw rows: the payload above is the PADDED length, and the
-   *  raw compressed signature is variable and strictly shorter. */
+  /** For Falcon's raw rows: the payload above is the PADDED length, which the
+   *  variable raw signature is compared AGAINST rather than bounded by. See the
+   *  measurement on the Falcon entries below. */
   payloadIsPaddedUpperBound?: true;
   source: string;
 }
@@ -77,19 +78,28 @@ export const SPEC_SIZES: Readonly<Record<string, SpecSizes>> = {
   // quote; the raw compressed ones are variable and have no single value.
   falcon512padded: { publicKey: 897, secretKey: 1281, payload: 666, source: 'Falcon v1.2 (secret-key encoding is the implementation’s)' },
   falcon1024padded: { publicKey: 1793, secretKey: 2305, payload: 1280, source: 'Falcon v1.2 (secret-key encoding is the implementation’s)' },
+  // `payload` here is the PADDED length, and `payloadIsPaddedUpperBound` names
+  // it as the reference point the raw rows are compared against -- NOT a bound
+  // they respect. That is a measured result rather than an assumption: over
+  // 4,000 signatures per scheme on 2026-09-29, raw Falcon-512 ran 648-663 B
+  // against a padded 666 and never reached it (0 of 4,000), while raw
+  // Falcon-1024 ran 1,259-1,282 B against a padded 1,280 and EXCEEDED it in 3
+  // of 4,000 (0.07%). "The compressed form is smaller" holds at 512 and breaks
+  // at the tail at 1024. An earlier revision asserted raw < padded for both and
+  // flaked about once in seven runs, which is how this was found.
   falcon512: {
     publicKey: 897,
     secretKey: 1281,
     payload: 666,
     payloadIsPaddedUpperBound: true,
-    source: 'Falcon v1.2 — raw compressed signatures are variable and shorter than the padded figure',
+    source: 'Falcon v1.2 — the padded encoding; raw compressed signatures are variable, measured here at 648-663 B',
   },
   falcon1024: {
     publicKey: 1793,
     secretKey: 2305,
     payload: 1280,
     payloadIsPaddedUpperBound: true,
-    source: 'Falcon v1.2 — raw compressed signatures are variable and shorter than the padded figure',
+    source: 'Falcon v1.2 — the padded encoding; raw compressed signatures are variable, measured here at 1,259-1,282 B and occasionally longer than padded',
   },
 
   // Hybrids: compositions, written as the sums they are rather than as three

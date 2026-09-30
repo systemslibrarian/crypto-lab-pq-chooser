@@ -195,7 +195,12 @@ describe('it reads derived rows and nothing else', () => {
     const raw = rows.get('falcon512')!.state;
     if (padded.status !== 'derived' || raw.status !== 'derived') throw new Error('expected derived');
     if (raw.sizes.payload.kind !== 'range') throw new Error('expected a range');
-    expect(raw.sizes.payload.max).toBeLessThan(
+    // The chooser charges the TOP of the measured range, which matters
+    // precisely because the top is not bounded by the padded size: raw
+    // Falcon-1024 exceeds it in about 0.07% of signatures. Budgeting from the
+    // bottom of a range would be budgeting for the best case.
+    expect(raw.sizes.payload.max).toBeGreaterThanOrEqual(raw.sizes.payload.min);
+    expect(raw.sizes.payload.min).toBeLessThan(
       padded.sizes.payload.kind === 'fixed' ? padded.sizes.payload.bytes : 0
     );
   });

@@ -75,16 +75,26 @@ describe.each(SCHEMES.map((s) => [s.id, s.label] as const))(
     it('derives the published ciphertext or signature length', () => {
       const sizes = derived(id);
       if (scheme.variableLength) {
-        // A variable-length signature has no published value to equal. What the
-        // spec pins is the PADDED encoding, which is the upper bound the raw
-        // one must stay under.
-        expect(spec.payloadIsPaddedUpperBound, 'variable rows check against the padded bound').toBe(true);
+        // A variable-length signature has no published value to equal, so what
+        // is checked is that it really varies and that it sits in the band
+        // around the padded encoding.
+        //
+        // NOT `max < padded`. That was the assertion here and it was an
+        // assumption, not a measurement: over 4,000 signatures, raw Falcon-1024
+        // exceeded its padded size in 3 of them. The test flaked about once in
+        // seven runs until the claim was measured instead of assumed.
+        expect(spec.payloadIsPaddedUpperBound, 'variable rows are compared with the padded encoding').toBe(true);
         expect(sizes.payload.kind).toBe('range');
         if (sizes.payload.kind !== 'range') throw new Error('unreachable');
-        expect(sizes.payload.max, 'raw compressed must stay under the padded size').toBeLessThan(
+        expect(sizes.payload.distinct, 'a variable-length signature must vary').toBeGreaterThan(1);
+        expect(sizes.payload.min, 'the typical compressed signature is smaller than the padded one').toBeLessThan(
           spec.payload
         );
-        expect(sizes.payload.min).toBeGreaterThan(0);
+        // A loose ceiling: the compressed form tracks the padded size closely,
+        // and anything far above it would mean the encoding had changed.
+        expect(sizes.payload.max, 'the compressed form stays in the band around the padded size').toBeLessThanOrEqual(
+          spec.payload + 16
+        );
       } else {
         expect(sizes.payload.kind).toBe('fixed');
         if (sizes.payload.kind !== 'fixed') throw new Error('unreachable');
