@@ -80,9 +80,11 @@ describe.each(SCHEMES.map((s) => [s.id, s.label] as const))(
         // around the padded encoding.
         //
         // NOT `max < padded`. That was the assertion here and it was an
-        // assumption, not a measurement: over 4,000 signatures, raw Falcon-1024
-        // exceeded its padded size in 3 of them. The test flaked about once in
-        // seven runs until the claim was measured instead of assumed.
+        // assumption, not a measurement: over 20,000 signatures observed offline
+        // with @noble/post-quantum 0.7.1, raw Falcon-1024 exceeded its padded size
+        // in 20 of them (0.100%). The test flaked about once in seven runs until
+        // the claim was measured instead of assumed. That rate is an observation
+        // with a sample size, not a bound - at 4,000 signatures the study saw 3.
         expect(spec.payloadIsPaddedUpperBound, 'variable rows are compared with the padded encoding').toBe(true);
         expect(sizes.payload.kind).toBe('range');
         if (sizes.payload.kind !== 'range') throw new Error('unreachable');

@@ -197,7 +197,8 @@ describe('it reads derived rows and nothing else', () => {
     if (raw.sizes.payload.kind !== 'range') throw new Error('expected a range');
     // The chooser charges the TOP of the measured range, which matters
     // precisely because the top is not bounded by the padded size: raw
-    // Falcon-1024 exceeds it in about 0.07% of signatures. Budgeting from the
+    // Falcon-1024 exceeds it in 20 of 20,000 signatures (0.100%), observed with
+    // @noble/post-quantum 0.7.1. Budgeting from the
     // bottom of a range would be budgeting for the best case.
     expect(raw.sizes.payload.max).toBeGreaterThanOrEqual(raw.sizes.payload.min);
     expect(raw.sizes.payload.min).toBeLessThan(

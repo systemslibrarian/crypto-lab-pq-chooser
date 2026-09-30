@@ -122,7 +122,8 @@ test.describe('the matrix reports what it derived', () => {
     const [min, max, distinct, samples] = allDigits(raw);
     const paddedBytes = digits(padded);
     // NOT `max < padded`. Measured over 4,000 signatures, raw Falcon-1024
-    // exceeds its padded size about 0.07% of the time, so that assertion was an
+    // exceeds its padded size in 20 of 20,000 signatures (0.100%) observed
+    // offline with @noble/post-quantum 0.7.1, so that assertion was an
     // assumption and it flaked. What is true, and what the panel actually
     // claims, is that the raw form VARIES and the padded one does not.
     expect(min, 'the typical compressed signature is smaller than the padded one').toBeLessThan(paddedBytes);

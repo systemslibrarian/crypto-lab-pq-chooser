@@ -80,26 +80,38 @@ export const SPEC_SIZES: Readonly<Record<string, SpecSizes>> = {
   falcon1024padded: { publicKey: 1793, secretKey: 2305, payload: 1280, source: 'Falcon v1.2 (secret-key encoding is the implementation’s)' },
   // `payload` here is the PADDED length, and `payloadIsPaddedUpperBound` names
   // it as the reference point the raw rows are compared against -- NOT a bound
-  // they respect. That is a measured result rather than an assumption: over
-  // 4,000 signatures per scheme on 2026-09-29, raw Falcon-512 ran 648-663 B
-  // against a padded 666 and never reached it (0 of 4,000), while raw
-  // Falcon-1024 ran 1,259-1,282 B against a padded 1,280 and EXCEEDED it in 3
-  // of 4,000 (0.07%). "The compressed form is smaller" holds at 512 and breaks
-  // at the tail at 1024. An earlier revision asserted raw < padded for both and
-  // flaked about once in seven runs, which is how this was found.
+    // they respect. That is a measured result rather than an assumption: over
+    // 20,000 signatures per scheme (@noble/post-quantum 0.7.1, 40 keys x 500),
+    // raw Falcon-512 ran 647-664 B against a padded 666 and never reached it
+    // (0 of 20,000), while raw Falcon-1024 ran 1,259-1,284 B against a padded
+    // 1,280 and EXCEEDED it in 20 of 20,000 (0.100%). "The compressed form is
+    // smaller" holds at 512 and breaks at the tail at 1024. An earlier revision
+    // asserted raw < padded for both and flaked about once in seven runs, which
+    // is how this was found.
+    //
+    // These are OBSERVED RANGES, NOT BOUNDS. At 4,000 signatures the same study
+    // saw 648-663 and 1,260-1,283; the extremes widened at 20,000 and will widen
+    // again, because the tails are thin rather than absent. A range quoted with
+    // no sample size behind it reads as a limit, which is how an earlier
+    // "~652-657" came to be published across three labs from twelve signatures.
+    // Quote the N with the range, or do not quote the range.
+    //
+    // Distinct from what the PAGE shows: the table derives its own range live in
+    // the browser from FALCON_SAMPLES signatures per row. That figure describes
+    // this run on this machine; the numbers above are the offline study.
   falcon512: {
     publicKey: 897,
     secretKey: 1281,
     payload: 666,
     payloadIsPaddedUpperBound: true,
-    source: 'Falcon v1.2 — the padded encoding; raw compressed signatures are variable, measured here at 648-663 B',
+    source: 'Falcon v1.2 — the padded encoding; raw compressed signatures are variable, observed at 647-664 B over 20,000 signatures',
   },
   falcon1024: {
     publicKey: 1793,
     secretKey: 2305,
     payload: 1280,
     payloadIsPaddedUpperBound: true,
-    source: 'Falcon v1.2 — the padded encoding; raw compressed signatures are variable, measured here at 1,259-1,282 B and occasionally longer than padded',
+    source: 'Falcon v1.2 — the padded encoding; raw compressed signatures are variable, observed at 1,259-1,284 B over 20,000 signatures and sometimes longer than padded',
   },
 
   // Hybrids: compositions, written as the sums they are rather than as three

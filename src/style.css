@@ -22,8 +22,8 @@
   /* The catalog accent for this lab. The shared top bar reads it too, and
      falls back to teal if it is ever undefined — a missing --accent is why a
      bar looks wrong. */
-  --accent: #9f88ff;
-  --accent-ink: #120d2a; /* 6.66:1 on the accent fill — never near-white */
+  --accent: #ffb84d;
+  --accent-ink: #120d2a; /* 10.94:1 on the accent fill — never near-white */
 
   --bg: #0b0f16;
   --surface: #121826;
