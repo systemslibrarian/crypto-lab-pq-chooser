@@ -45,7 +45,12 @@ import {
   renderBenchResult,
 } from './ui/bench-panel';
 import { renderFixture, renderNegativeClaimPanel } from './ui/negative-claim';
-import { renderCannotDecide, renderChooserPanel, renderShortlist } from './ui/chooser-panel';
+import {
+  renderCannotDecide,
+  renderChooserPanel,
+  renderDerivationStrip,
+  renderShortlist,
+} from './ui/chooser-panel';
 import { MAX_PINNED, renderComparePanel, renderCompareTray } from './ui/compare-tray';
 import {
   renderFooter,
@@ -74,6 +79,8 @@ let constraints: Constraints = shared.constraints;
 const pinned: string[] = [...shared.pinned];
 let benchmark: BenchmarkRun | null = null;
 let coreReady = false;
+let coreMs: number | null = null;
+let allMs: number | null = null;
 
 app.innerHTML = `
   <div class="wrap">
@@ -103,6 +110,7 @@ const deriveSlowButton = qs<HTMLButtonElement>(app, '#derive-slow');
 const stopSlowButton = qs<HTMLButtonElement>(app, '#stop-slow');
 const shortlistHost = qs(app, '#shortlist');
 const roleNote = qs(app, '#role-note');
+const derivationStrip = qs(app, '#derivation-strip');
 const trayHost = qs(app, '#compare-tray');
 const claimOutput = qs(app, '#claim-output');
 const wireOutput = qs(app, '#wire-output');
@@ -154,6 +162,7 @@ function renderPins(): void {
 }
 
 function refreshShortlist(): void {
+  derivationStrip.innerHTML = renderDerivationStrip(client.rows, coreMs, allMs);
   shortlistHost.innerHTML = renderShortlist(constraints, client.rows, benchmark, new Set(pinned), coreReady);
   roleNote.textContent = ROLE_NOTE[constraints.role];
   renderPins();
@@ -185,17 +194,19 @@ const client = new DeriveClient({
   onEvent: (_event: DerivationEvent) => {
     renderLog(logList, client.events);
   },
-  onCoreReady: (coreMs: number) => {
+  onCoreReady: (ms: number) => {
     coreReady = true;
+    coreMs = ms;
     // Reported SEPARATELY from "complete", because they are different claims
     // and the gap between them is eleven seconds of hash-based signing.
     matrixStatus.textContent =
-      `Core comparison ready: ${derivedCount()} sets derived in ${(coreMs / 1000).toFixed(1)} s. ` +
+      `Core comparison ready: ${derivedCount()} sets derived in ${(ms / 1000).toFixed(1)} s. ` +
       `${SLOW_SCHEME_IDS.length} slow SLH-DSA sets are not measured yet.`;
     repaintMatrix();
     refreshShortlist();
   },
   onMatrixDone: (totalMs: number) => {
+    allMs = totalMs;
     stopSlowButton.hidden = true;
     deriveSlowButton.hidden = true;
     matrixStatus.textContent = `${matrixStatusText(client.rows)} All sets complete after ${(totalMs / 1000).toFixed(1)} s in this browser.`;

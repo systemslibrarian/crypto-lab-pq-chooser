@@ -8,6 +8,9 @@ import { defineConfig, devices } from '@playwright/test';
  *   - layout.spec.ts  — composition: what is above the fold, what a phone can
  *                       read, where a fragment link lands. Measured as numbers
  *                       rather than compared as pixels; see the file for why.
+ *   - perf.spec.ts    — budgets for time-to-first-actionable and
+ *                       time-to-core-ready, kept separate from
+ *                       all-sets-complete because they are separate claims.
  *   - smoke.spec.ts   — the small cross-engine and post-deploy check. Set
  *                       PQ_CHOOSER_BASE_URL to point it at the live site.
  *
@@ -48,6 +51,11 @@ export default defineConfig({
     {
       name: 'layout',
       testMatch: /layout\.spec\.ts/,
+      use: { ...devices['Desktop Chrome'], colorScheme: 'dark' },
+    },
+    {
+      name: 'perf',
+      testMatch: /perf\.spec\.ts/,
       use: { ...devices['Desktop Chrome'], colorScheme: 'dark' },
     },
     {

@@ -67,6 +67,9 @@ jobs:
       - name: Layout gate (first viewport, phone matrix, anchor offsets)
         run: npm run test:layout
 
+      - name: Performance budget (first actionable, core-ready)
+        run: npm run test:perf
+
       - name: Cross-engine smoke (Chromium + Firefox)
         run: npm run test:smoke
 

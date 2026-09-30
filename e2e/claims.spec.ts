@@ -37,7 +37,17 @@ function digits(text: string): number {
   return Number(match[0]);
 }
 
-/** Every number in a rendered cell, in order. */
+/**
+ * Every number in a rendered cell, in order.
+ *
+ * READ THIS BEFORE INDEXING INTO IT. `\d+` splits a decimal into two entries,
+ * so "16 sets in 1.4 s, 3 deferred" yields [16, 1, 4, 3] and the third number a
+ * reader sees is at index 3, not 2. Positional reads are only safe where the
+ * text has no decimals before the value you want. Where it might, match on the
+ * words around the number instead -- a positional read here passed by
+ * coincidence whenever a timing happened to end in .3, which is worse than
+ * having no assertion.
+ */
 function allDigits(text: string): number[] {
   return [...text.replace(/,/g, '').matchAll(/\d+/g)].map((m) => Number(m[0]));
 }
@@ -70,9 +80,12 @@ test.describe('the matrix reports what it derived', () => {
     test.setTimeout(600_000);
     await derivedPage(page, { slow: true });
     const status = await page.locator('#matrix-status').innerText();
-    const [derived, total] = allDigits(status);
-    expect(derived).toBe(await page.locator('tr[data-state="derived"]').count());
-    expect(total).toBe(await page.locator('tr[data-row]').count());
+    // Anchored on the wording, not on position: the sentence also carries a
+    // duration, and `\d+` would split its decimal.
+    const counted = status.replace(/,/g, '').match(/(\d+) of (\d+) parameter sets derived/);
+    expect(counted, `unexpected status wording: ${status}`).not.toBeNull();
+    expect(Number(counted![1])).toBe(await page.locator('tr[data-state="derived"]').count());
+    expect(Number(counted![2])).toBe(await page.locator('tr[data-row]').count());
   });
 
   test('core-ready and all-complete are reported as different claims', async ({ page }) => {
@@ -84,8 +97,9 @@ test.describe('the matrix reports what it derived', () => {
     const ready = await page.locator('#matrix-status').innerText();
     expect(ready).toMatch(/Core comparison ready/);
     expect(ready).toMatch(/not measured yet/);
-    const [coreCount] = allDigits(ready);
-    expect(coreCount).toBe(16);
+    const core = ready.match(/ready: (\d+) sets derived/);
+    expect(core, `unexpected core-ready wording: ${ready}`).not.toBeNull();
+    expect(Number(core![1])).toBe(await page.locator('tr[data-state="derived"]').count());
 
     await page.locator('#derive-slow').click();
     await waitForMatrixSettled(page);
@@ -617,6 +631,46 @@ test.describe('the shortlist says where every part of it came from', () => {
         expect(Number(wire[1].replace(/,/g, '')), `${id} wire total`).toBe(pk + payloadBytes);
       }
     }
+  });
+
+  test('the derivation strip counts the rows it is counting', async ({ page }) => {
+    test.setTimeout(600_000);
+    await derivedPage(page);
+    // A cross-check between two surfaces: the provenance sentence beside the
+    // shortlist against the matrix it is describing.
+    // Parsed by the words around each number, NOT by position. A positional
+    // read walked over the decimal point in "1.4 s" and picked up the 4 as the
+    // deferred count -- which passed whenever the timing happened to end in .3
+    // and failed otherwise. A test that can pass by coincidence is worse than
+    // no test, and this one did, once.
+    const countNear = (text: string, re: RegExp): number => {
+      const m = text.replace(/,/g, '').match(re);
+      if (!m) throw new Error(`no match for ${re} in ${JSON.stringify(text)}`);
+      return Number(m[1]);
+    };
+
+    const strip = await page.locator('#derivation-strip').innerText();
+    expect(countNear(strip, /(\d+) parameter sets/)).toBe(
+      await page.locator('tr[data-state="derived"]').count()
+    );
+    expect(countNear(strip, /(\d+) more sign in seconds/)).toBe(
+      await page.locator('tr[data-code="DERIVE_DEFERRED"]').count()
+    );
+    expect(strip).toMatch(/derived in this browser just now/);
+
+    // ...and it updates rather than going stale when the rest is measured.
+    // Waited on the strip's own wording, because `matrix-done` arrives after
+    // the last row does and asserting immediately races it.
+    await page.locator('#derive-slow').click();
+    await waitForMatrixSettled(page);
+    await expect(page.locator('#derivation-strip')).toContainText('for all of them');
+    const after = await page.locator('#derivation-strip').innerText();
+    expect(countNear(after, /(\d+) parameter sets/)).toBe(
+      await page.locator('tr[data-state="derived"]').count()
+    );
+    expect(after, 'nothing is still waiting once everything is measured').not.toMatch(
+      /measured only when you ask/
+    );
   });
 
   test('device speed is stated as absent rather than filled in', async ({ page }) => {

@@ -12,6 +12,13 @@
  * derived, which is about two seconds. Before that it says it is waiting, and
  * before the benchmark has run it says device speed is not part of the ordering
  * — rather than filling either gap with a figure nobody measured.
+ *
+ * The derivation strip is the provenance of the shortlist, stated where the
+ * decision is made rather than only in the log further down: how many sets were
+ * derived, how long it took, and how many are still waiting to be asked for. It
+ * is the page's signature mechanic surfaced at the point it matters, and it is
+ * short because with the core pass at about two seconds there is not much of a
+ * timeline left to watch.
  */
 
 import {
@@ -23,6 +30,7 @@ import {
   type Shortlist,
 } from '../choose/rules';
 import type { DerivedRow } from '../derive/types';
+import { FAILURE_CODES } from '../derive/codes';
 import type { BenchmarkRun } from '../bench/runner';
 import { bytes, duration, escapeHTML } from './helpers';
 
@@ -94,6 +102,10 @@ export function renderChooserPanel(c: Constraints): string {
           </div>
         </div>
       </div>
+
+      <p class="derivation-strip" id="derivation-strip" role="status" aria-live="polite">
+        Deriving the core parameter sets…
+      </p>
 
       <div id="shortlist" role="tabpanel" aria-labelledby="role-${c.role}" aria-live="polite"></div>
 
@@ -201,4 +213,33 @@ export function renderCannotDecide(): string {
   )
     .cannotDecide.map((line) => `<li role="listitem">${escapeHTML(line)}</li>`)
     .join('');
+}
+
+/**
+ * Where the shortlist's figures came from, and what they cost.
+ *
+ * Every number in this sentence is counted off the rows the page is holding,
+ * so it cannot drift from the table below it.
+ */
+export function renderDerivationStrip(
+  rows: ReadonlyMap<string, DerivedRow>,
+  coreMs: number | null,
+  totalMs: number | null
+): string {
+  const all = [...rows.values()];
+  const derived = all.filter((r) => r.state.status === 'derived').length;
+  const deferred = all.filter(
+    (r) => r.state.status === 'unavailable' && r.state.code === FAILURE_CODES.DERIVE_DEFERRED
+  ).length;
+
+  if (coreMs === null) return 'Deriving the core parameter sets\u2026';
+
+  const took =
+    totalMs !== null
+      ? `${(totalMs / 1000).toFixed(1)}\u00a0s for all of them`
+      : `${(coreMs / 1000).toFixed(1)}\u00a0s`;
+  const waiting = deferred
+    ? ` ${deferred} more sign in seconds each and are measured only when you ask \u2014 see the matrix below.`
+    : '';
+  return `These figures were derived in this browser just now: <strong>${derived} parameter sets in ${took}</strong>.${waiting}`;
 }
