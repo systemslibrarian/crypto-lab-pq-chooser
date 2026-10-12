@@ -53,6 +53,7 @@ import {
 } from './ui/chooser-panel';
 import { MAX_PINNED, renderComparePanel, renderCompareTray } from './ui/compare-tray';
 import {
+  renderLimitedSignatureDraft,
   renderFooter,
   renderHero,
   renderIntroLong,
@@ -98,6 +99,7 @@ app.innerHTML = `
       ${renderClaimPanel()}
       ${renderRiskPanel()}
       ${renderNegativeClaimPanel()}
+      ${renderLimitedSignatureDraft()}
       ${renderScope()}
       ${renderRelated()}
     </main>

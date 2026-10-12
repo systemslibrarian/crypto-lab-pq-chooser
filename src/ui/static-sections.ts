@@ -220,3 +220,12 @@ export function renderFooter(): string {
       <p>So whether you eat or drink or whatever you do, do it all for the glory of God. — 1 Corinthians 10:31</p>
     </footer>`;
 }
+
+export function renderLimitedSignatureDraft(): string {
+  return `<section class="card" id="limited-signature-draft" aria-labelledby="limited-signature-h">
+    <h2 id="limited-signature-h">Draft reference: limited-use SLH-DSA</h2>
+    <p class="card-lead"><a href="https://csrc.nist.gov/pubs/sp/800/230/ipd" target="_blank" rel="noopener noreferrer">NIST SP 800-230 (13 April 2026 initial public draft)</a> proposes additional smaller/faster-verifying SLH-DSA profiles with a lifetime limit of 2²⁴ signatures per signing key. They are not general-purpose approved parameter sets; the comment period has closed, but that does not make them final.</p>
+    <p><strong>Reference only — unranked and unbenchmarked.</strong> These draft profiles are not in this lab’s executable scheme registry, shortlist, derived-size matrix or measurement export. Published estimates are not substituted for measured adapter outputs. The existing SLH-DSA rows still execute the FIPS 205 parameter sets.</p>
+    <p>Explore the workload and independently managed key tradeoff in <a href="https://systemslibrarian.github.io/crypto-lab-sphincs-ledger/#limited-signature-use">SPHINCS Ledger’s budget calculator</a>. Shared-key replicas share one lifetime budget. Reviewed 12 October 2026.</p>
+  </section>`;
+}
