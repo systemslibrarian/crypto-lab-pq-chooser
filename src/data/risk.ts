@@ -20,7 +20,7 @@ export interface RiskRow {
   risk: string;
   /** The detail a reader needs to take it seriously. */
   detail: string;
-  /** Where to go and see it. Labs in this fleet, by name. */
+  /** Where to go and see it: fleet labs and primary research. */
   evidence: readonly { label: string; href: string }[];
   /**
    * Set where this page's own output is part of the evidence. The SLH-DSA row
@@ -38,10 +38,10 @@ const lab = (slug: string, label: string): { label: string; href: string } => ({
 export const RISK_ROWS: readonly RiskRow[] = [
   {
     subject: 'Falcon / FN-DSA',
-    risk: 'Floating-point Gaussian sampler; constant-time hardening is hard.',
+    risk: 'Precision-sensitive Gaussian sampler; side-channel assurance is implementation-specific.',
     detail:
-      'Signing runs a fast-Fourier lattice sampler over floating-point arithmetic. Getting that side-channel-free is materially harder than for a scheme built on integer arithmetic, and published work keeps finding ways in — a 2026 preprint reports power-trace key recovery against PQClean Falcon signing on a Cortex-M4 (ePrint 2026/2124).',
-    evidence: [lab('falcon-seal', 'Falcon Seal — the sampler exhibit'), lab('pq-families', 'PQ Families')],
+      'The implementation measured here uses floating-point Gaussian sampling. A 12 October 2026 preprint reports fixed-point Falcon-512/1024 signing on Cortex-M4 (ePrint 2026/2431), with precision and memory tradeoffs. That signer is not evaluated here, and fixed point alone does not certify side-channel resistance. The chooser therefore retains its conservative exclusion. A separate preprint reports power-trace key recovery against PQClean Falcon signing on Cortex-M4 (ePrint 2026/2124).',
+    evidence: [lab('falcon-seal', 'Falcon Seal — the sampler exhibit'), lab('pq-families', 'PQ Families'), { label: 'Flying, Not Floating — preprint, 12 October 2026', href: 'https://eprint.iacr.org/2026/2431' }],
   },
   {
     subject: 'SLH-DSA',

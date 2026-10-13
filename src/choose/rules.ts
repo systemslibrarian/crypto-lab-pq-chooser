@@ -188,7 +188,7 @@ const FAMILY_CAVEAT: Record<
   },
   'Falcon / FN-DSA': {
     caveat:
-      'Signing runs a floating-point Gaussian sampler, which is materially harder to make constant-time; FIPS 206 is still in development.',
+      'The implementation measured here uses a floating-point Gaussian sampler and needs side-channel hardening. Fixed-point alternatives exist but are not evaluated here; FIPS 206 is still in development.',
     evidence: { label: 'Falcon Seal', href: 'https://systemslibrarian.github.io/crypto-lab-falcon-seal/' },
   },
   Hybrid: {
@@ -255,7 +255,7 @@ export function chooseSchemes(
       continue;
     }
     if (constraints.sideChannelSensitive && scheme.family === 'Falcon / FN-DSA') {
-      exclude(scheme, 'its signing uses a floating-point Gaussian sampler, and you said the signing key is somewhere an attacker can measure');
+      exclude(scheme, 'the implementation measured here uses a floating-point Gaussian sampler without side-channel assurance, and you said the signing key is somewhere an attacker can measure; fixed-point alternatives have not been evaluated here');
       continue;
     }
     if (constraints.role === 'signature' && constraints.signingFrequency === 'frequent' && scheme.costClass === 'slow') {

@@ -190,7 +190,7 @@ Not editorial judgement — each cell links to the lab that demonstrates it:
 
 | Scheme | Risk | Evidence |
 |---|---|---|
-| Falcon / FN-DSA | Floating-point FFT Gaussian sampler; constant-time hardening is hard. A 2026 preprint reports power-trace key recovery against PQClean Falcon signing on Cortex-M4 (ePrint 2026/2124) | `crypto-lab-pq-families/src/data.ts:138`; sampler exhibit in `crypto-lab-falcon-seal` |
+| Falcon / FN-DSA | The measured implementation uses floating-point Gaussian sampling; side-channel assurance is implementation-specific. Fixed-point Cortex-M4 alternatives are reported in [ePrint 2026/2431](https://eprint.iacr.org/2026/2431) (12 October 2026, preprint), but are not evaluated here. A separate 2026 preprint reports power-trace key recovery against PQClean Falcon signing on Cortex-M4 (ePrint 2026/2124) | `crypto-lab-pq-families/src/data.ts:138`; sampler exhibit in `crypto-lab-falcon-seal` |
 | SLH-DSA | Signing cost. The `s` variants sign in **hundreds of milliseconds to seconds** (S2 above, measured) — the stateless guarantee is paid for in signing time | `crypto-lab-pq-families/src/data.ts:371`; measured in this lab's own benchmark |
 | ML-KEM | **Implicit rejection** — decapsulation never fails. A bad ciphertext returns a pseudorandom key, so the caller gets no error and a naive integration cannot tell rejection from success | `crypto-lab-kem-trap` (its whole subject: how an ACVP-validated KEM is destroyed by the code that calls it) |
 | ML-KEM | KyberSlash — division by q = 3329 in reference `poly_tomsg` / `poly_compress` leaks through timing | `crypto-lab-pq-families/src/data.ts:159`; `crypto-lab-kyberslash` |

@@ -105,7 +105,7 @@ That last one is the lab's **negative claim**, and it has a fixture rather than 
 - **TLS 1.3** is where these byte counts land first. Chrome and Firefox ship ML-KEM-768 + X25519 hybrid key exchange by default; the handshake panel prices exactly that pairing.
 - **Certificates** are the harder half. A post-quantum signature in a certificate chain multiplies: every intermediate, every OCSP staple, every SCT. The Certificate and CertificateVerify rows in the wire panel are the ones that make migration expensive.
 - **Firmware and code signing** is where SLH-DSA's trade is worth it: signing happens rarely and offline, verification is comparatively cheap, and the security rests on the hash function alone rather than on a lattice assumption.
-- **Falcon / FN-DSA** is chosen where bytes on the wire dominate — and avoided where a floating-point sampler in a side-channel-exposed environment is unacceptable.
+- **Falcon / FN-DSA** is chosen where bytes on the wire dominate. This chooser conservatively excludes its current floating-point implementation for side-channel-exposed signing. [*Flying, Not Floating*](https://eprint.iacr.org/2026/2431) (ePrint 2026/2431, released 12 October 2026) reports fixed-point Falcon-512/1024 on Cortex-M4. That preprint is not independent side-channel assurance or a final FN-DSA standard; the alternative is not evaluated by this chooser.
 
 ## How to Run Locally
 
