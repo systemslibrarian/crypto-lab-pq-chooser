@@ -751,7 +751,7 @@ test.describe('the shortlist says where every part of it came from', () => {
   test('the shortlist says what it cannot decide at all', async ({ page }) => {
     test.setTimeout(600_000);
     await derivedPage(page);
-    await page.locator('.chooser-scope > summary').click();
+    await page.locator('#cannot-decide-scope > summary').click();
     const cannot = page.locator('#cannot-decide');
     await expect(cannot).toContainText('Ecosystem support');
     await expect(cannot).toContainText('Certification');
