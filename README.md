@@ -31,6 +31,7 @@ A derived figure gets that distinction for free. The padded and unpadded Falcon 
 ## Exhibits
 
 0. **The chooser** — pick key exchange or signatures, set what constrains you (NIST category floor, wire budget, signing and verification frequency, hybrid requirement, whether the signing key is somewhere an attacker can measure), and get a **two- or three-item shortlist**. Each candidate carries why it survived, the derived bytes behind it, one thing against it with a link to the demo that shows it, and — before the benchmark has run — an explicit statement that device speed is **not** part of the ordering. Every exclusion is listed with its reason, and the panel says what it cannot decide at all: ecosystem support, certification, implementation quality, hardware acceleration, interoperability.
+   On the key-exchange track, open **What about HQC?** to see why an important selected KEM is outside both the shortlist and its excluded list. [NIST selected HQC on 11 March 2025](https://csrc.nist.gov/projects/post-quantum-cryptography/post-quantum-cryptography-standardization/selected-algorithms) as a code-based complement to ML-KEM, but its FIPS is still forthcoming. This page's installed library does not execute HQC, so it cannot put a published size or timing into its derived matrix or rank HQC against measured rows. The disclosure links to [HQC Vault](https://systemslibrarian.github.io/crypto-lab-hqc-vault/) for a separate demonstration; neither lab alone chooses a production KEM.
 0b. **The comparison tray** — pin up to three and see them side by side, every cell labelled *derived here*, *measured here* or *no figure*. There is deliberately **no overall score**: the tradeoff is the lesson and one number would hide it behind weights nobody stated.
 1. **The matrix** — nineteen rows, filled progressively as the worker finishes each set. States distinct by icon, word and colour: `queued`, `measuring…`, `derived in N ms`, and `no figure` with the reason. A row that has not derived shows **no number** — never the published figure "just until it resolves". On a phone it stacks into one card per scheme rather than a seven-column horizontal scroll, with explicit ARIA roles so the table semantics survive the change.
 2. **Two-pass derivation** — the sixteen core sets derive on load in about two seconds; the three SLH-DSA `s` sets, which sign in hundreds of milliseconds to seconds each, wait until you press **Measure the 3 slow SLH-DSA sets**. Until then they say *not measured yet* and why. **Core comparison ready** and **all sets complete** are reported as two different sentences, because they are two different claims eleven seconds apart.
@@ -58,6 +59,7 @@ A derived figure gets that distinction for free. The padded and unpadded Falcon 
 The chooser is the first thing on the page and is usable in about two seconds. Then:
 
 - Switch to **Signatures**, set a **tight** wire budget and **rare** signing, and watch the shortlist collapse to one — then tick *the signing key is somewhere an attacker can measure* and watch it collapse to none, with the closest miss named.
+- Switch back to **Key exchange** and open **What about HQC, the other selected KEM?** to see how the lab treats an algorithm it cannot derive or measure.
 - Pin two and compare them; every cell says whether it was derived, measured or neither.
 - Press **Measure the 3 slow SLH-DSA sets** and watch the matrix finish.
 - Open the **derivation log** and compare an `s` row with the `f` row beside it.
@@ -140,7 +142,7 @@ This page answers *which one*. Every *why* lives in a lab of its own.
 
 ## Build & Verify
 
-**Vitest: 316 tests across 15 files, all passing** — plus **46 Playwright claims tests**, **13 layout-gate tests**, **2 performance-budget tests**, **6 accessibility-gate tests** and **2 cross-engine smoke tests**, for **385** in CI (a WebKit smoke run makes 386 locally). They cover:
+**Vitest: 316 tests across 15 files, all passing** — plus **47 Playwright claims tests**, **13 layout-gate tests**, **2 performance-budget tests**, **6 accessibility-gate tests** and **2 cross-engine smoke tests**, for **386** in CI (a WebKit smoke run makes 387 locally). They cover:
 
 - **`src/derive/kat.test.ts` — the spec KATs.** All nineteen parameter sets derived and checked against FIPS 203 Table 3, FIPS 204 Table 2, FIPS 205 Table 2 and Falcon v1.2, plus round-trip agreement, tamper rejection on every signature scheme, the hybrid compositions, and the Round-3 guard (asserting the stale 3293 and 4595 are *absent*, not merely that the right values are present).
 - **`src/derive/spec-sizes.ts` — the only place a published figure exists.** `schemes.test.ts` fails the build if any module the page can reach imports it.

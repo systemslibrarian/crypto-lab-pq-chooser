@@ -25,7 +25,7 @@ export const NARROW = { width: 380, height: 800 };
  *     that it took effect, because both `test.use({ reducedMotion })` and the
  *     config key are measured no-ops on Playwright 1.6x.
  *
- *  2. NOTHING IS REVEALED FROM SCRIPT. The two `<details>` here are opened by
+ *  2. NOTHING IS REVEALED FROM SCRIPT. The `<details>` here are opened by
  *     clicking their `<summary>`, which is the route a reader has, and both the
  *     shut and open states are scanned.
  *
@@ -820,8 +820,12 @@ export async function driveAllStates(page: Page, label: string): Promise<void> {
   await scanAt('all nineteen parameter sets derived');
 
   // ── The disclosures, opened the way a reader opens them ────────────────
-  await page.locator('.chooser-scope > summary').click();
-  await expect(page.locator('.chooser-scope[open]')).toHaveCount(1);
+  await page.locator('#hqc-scope > summary').click();
+  await expect(page.locator('#hqc-scope[open]')).toHaveCount(1);
+  await scanAt('the HQC selection and measurement-scope disclosure open');
+
+  await page.locator('#cannot-decide-scope > summary').click();
+  await expect(page.locator('#cannot-decide-scope[open]')).toHaveCount(1);
   await expect(page.locator('#cannot-decide li')).not.toHaveCount(0);
   await scanAt('the "what this cannot decide" disclosure open');
 

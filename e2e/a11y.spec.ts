@@ -17,7 +17,8 @@ import {
  * first paint with all nineteen rows queued and not one figure on screen; the
  * shared skip link focused; the last SLH-DSA `s` set measuring while the other
  * eighteen rows have settled; the whole matrix derived with four misquotes
- * contradicted by the page's own output; both disclosures opened through their
+ * contradicted by the page's own output; the chooser's HQC and decision-scope
+ * disclosures, then the derivation log, opened through their
  * summaries; the claim checker contradicting a claim, refusing a malformed one,
  * and confirming one typed from a figure read off the page; a computed TLS
  * handshake and then one priced with a variable-length signature; a real
