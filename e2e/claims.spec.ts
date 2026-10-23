@@ -75,6 +75,24 @@ async function derivedPage(page: Page, { slow = false } = {}): Promise<void> {
   }
 }
 
+test('HQC status is visible in the key-exchange decision without a fabricated measured row', async ({ page }) => {
+  await derivedPage(page);
+  const hqc = page.locator('#hqc-scope');
+  await expect(hqc).toBeVisible();
+  await hqc.locator('summary').click();
+  await expect(hqc).toHaveAttribute('open', '');
+  await expect(hqc).toContainText('Selected for standardization, not yet a final FIPS');
+  await expect(hqc).toContainText('outside this shortlist');
+  await expect(hqc.locator('a[href*="csrc.nist.gov/projects/post-quantum-cryptography"]')).toHaveCount(1);
+  await expect(hqc.locator('a[href="https://systemslibrarian.github.io/crypto-lab-hqc-vault/"]')).toHaveCount(1);
+  await expect(page.locator('tr[data-row*="hqc"], [data-candidate*="hqc"]')).toHaveCount(0);
+
+  await page.locator('#role-signature').click();
+  await expect(hqc).toBeHidden();
+  await page.locator('#role-kem').click();
+  await expect(hqc).toBeVisible();
+});
+
 test.describe('the matrix reports what it derived', () => {
   test('the status counter matches the rows it counts', async ({ page }) => {
     test.setTimeout(600_000);
@@ -733,7 +751,7 @@ test.describe('the shortlist says where every part of it came from', () => {
   test('the shortlist says what it cannot decide at all', async ({ page }) => {
     test.setTimeout(600_000);
     await derivedPage(page);
-    await page.locator('.chooser-scope > summary').click();
+    await page.locator('#cannot-decide-scope > summary').click();
     const cannot = page.locator('#cannot-decide');
     await expect(cannot).toContainText('Ecosystem support');
     await expect(cannot).toContainText('Certification');

@@ -109,7 +109,24 @@ export function renderChooserPanel(c: Constraints): string {
 
       <div id="shortlist" role="tabpanel" aria-labelledby="role-${c.role}" aria-live="polite"></div>
 
-      <details class="chooser-scope">
+      <details class="chooser-scope hqc-scope" id="hqc-scope" data-role-only="kem">
+        <summary>What about HQC, the other selected KEM?</summary>
+        <p>
+          <strong>Selected for standardization, not yet a final FIPS.</strong>
+          <a href="https://csrc.nist.gov/projects/post-quantum-cryptography/post-quantum-cryptography-standardization/selected-algorithms" target="_blank" rel="noopener noreferrer">NIST selected HQC on 11 March 2025</a>
+          as a code-based complement to ML-KEM; NIST still lists its FIPS as forthcoming.
+        </p>
+        <p>
+          HQC is <strong>outside this shortlist</strong>, including the excluded list: this page ranks
+          only schemes its installed library can run, round-trip, and measure in this browser.
+          No HQC adapter is in that run, so placing published HQC sizes beside derived sizes
+          would make unlike evidence look comparable. If an independent code-based KEM matters
+          to your decision, explore the <a href="https://systemslibrarian.github.io/crypto-lab-hqc-vault/">HQC Vault lab</a>
+          and evaluate a suitable implementation before deciding; neither lab makes a deployment recommendation.
+        </p>
+      </details>
+
+      <details class="chooser-scope" id="cannot-decide-scope">
         <summary>What this shortlist cannot decide</summary>
         <ul class="scope-list" id="cannot-decide"></ul>
       </details>
