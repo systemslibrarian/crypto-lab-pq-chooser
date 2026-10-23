@@ -142,7 +142,7 @@ This page answers *which one*. Every *why* lives in a lab of its own.
 
 ## Build & Verify
 
-**Vitest: 321 tests across 15 files, all passing** — plus **47 Playwright claims tests**, **13 layout-gate tests**, **2 performance-budget tests**, **6 accessibility-gate tests** and **2 cross-engine smoke tests**, for **391** in CI (a WebKit smoke run makes 392 locally). They cover:
+**Vitest: 321 tests across 15 files, all passing** — plus **48 Playwright claims tests**, **13 layout-gate tests**, **2 performance-budget tests**, **6 accessibility-gate tests** and **2 cross-engine smoke tests**, for **392** in CI (a WebKit smoke run makes 393 locally). They cover:
 
 - **`src/derive/kat.test.ts` — the spec KATs.** All nineteen parameter sets derived and checked against FIPS 203 Table 3, FIPS 204 Table 2, FIPS 205 Table 2 and Falcon v1.2, plus round-trip agreement, tamper rejection on every signature scheme, the hybrid compositions, and the Round-3 guard (asserting the stale 3293 and 4595 are *absent*, not merely that the right values are present).
 - **`src/derive/spec-sizes.ts` — the only place a published figure exists.** `schemes.test.ts` fails the build if any module the page can reach imports it.
