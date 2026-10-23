@@ -41,10 +41,12 @@ describe('ML-KEM implicit rejection', () => {
     expect(result.flippedByteIndex).toBeLessThan(result.cipherTextBytes);
   });
 
-  it('reports the two secrets as different prefixes', () => {
+  it('reports only the comparison result across the worker boundary, never key bytes', () => {
     const result = runKemFixture(42);
-    expect(result.honestSecretPrefix).not.toBe(result.recoveredSecretPrefix);
-    expect(result.honestSecretPrefix).toMatch(/^([0-9a-f]{2} ){7}[0-9a-f]{2}$/);
+    expect(result.secretsMatch).toBe(false);
+    expect(result).not.toHaveProperty('honestSecretPrefix');
+    expect(result).not.toHaveProperty('recoveredSecretPrefix');
+    expect(Object.values(result).some((value) => value instanceof Uint8Array)).toBe(false);
   });
 });
 

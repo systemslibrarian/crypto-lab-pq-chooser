@@ -34,7 +34,7 @@
  * reader can check.
  */
 
-import { KEMS, SIGNERS, DERIVATION_MESSAGE } from '../derive/adapters';
+import { bytesEqual, KEMS, SIGNERS, DERIVATION_MESSAGE } from '../derive/adapters';
 import { SCHEMES_BY_ID, type CostClass, type SchemeKind } from '../derive/schemes';
 import { collectEnvironment, type BenchmarkEnvironment } from './environment';
 import { summarize, type Summary } from './stats';
@@ -183,7 +183,11 @@ async function benchmarkScheme(
   if (scheme.kind === 'kem') {
     const kem = KEMS[schemeId];
     const keys = kem.keygen();
-    const { cipherText } = kem.encapsulate(keys.publicKey);
+    const { cipherText, sharedSecret } = kem.encapsulate(keys.publicKey);
+    const recovered = kem.decapsulate(cipherText, keys.secretKey);
+    if (!bytesEqual(recovered, sharedSecret)) {
+      throw new Error(`${schemeId} benchmark preflight did not recover the encapsulated shared secret`);
+    }
     const operations = await measureSlots(
       counts,
       [
@@ -210,6 +214,9 @@ async function benchmarkScheme(
   const signer = SIGNERS[schemeId];
   const keys = signer.keygen();
   const signature = signer.sign(DERIVATION_MESSAGE, keys.secretKey);
+  if (!signer.verify(signature, DERIVATION_MESSAGE, keys.publicKey)) {
+    throw new Error(`${schemeId} benchmark preflight signature did not verify`);
+  }
   const operations = await measureSlots(
     counts,
     [
@@ -268,6 +275,22 @@ async function benchmarkX25519(
     const ephemeral = (await crypto.subtle.generateKey({ name: 'X25519' }, true, [
       'deriveBits',
     ])) as CryptoKeyPair;
+    // Correctness preflight is outside every timed region. Both parties must
+    // derive the same bits before this harness is willing to call either side
+    // an X25519 benchmark.
+    const sent = await crypto.subtle.deriveBits(
+      { name: 'X25519', public: receiver.publicKey },
+      ephemeral.privateKey,
+      256
+    );
+    const received = await crypto.subtle.deriveBits(
+      { name: 'X25519', public: ephemeral.publicKey },
+      receiver.privateKey,
+      256
+    );
+    if (!bytesEqual(new Uint8Array(sent), new Uint8Array(received))) {
+      throw new Error('X25519 benchmark preflight derived different shared secrets');
+    }
     // The KEM analogue: "encapsulate" is a fresh ephemeral key plus one
     // derivation; "decapsulate" is the receiver's single derivation. Modelling
     // it any other way would flatter X25519 by charging it less work than the
@@ -314,7 +337,7 @@ async function benchmarkX25519(
       ...base,
       operations: [],
       unmeasured: [],
-      unsupportedReason: `this browser did not provide X25519 through the Web Crypto API (${
+      unsupportedReason: `this browser could not complete a verified X25519 round trip through the Web Crypto API (${
         err instanceof Error ? err.message : String(err)
       })`,
     };
@@ -340,6 +363,9 @@ async function benchmarkEcdsaP256(
   try {
     const keys = (await crypto.subtle.generateKey(alg, true, ['sign', 'verify'])) as CryptoKeyPair;
     const sig = await crypto.subtle.sign(signAlg, keys.privateKey, CLASSICAL_MESSAGE);
+    if (!(await crypto.subtle.verify(signAlg, keys.publicKey, sig, CLASSICAL_MESSAGE))) {
+      throw new Error('ECDSA P-256 benchmark preflight signature did not verify');
+    }
     const operations = await measureSlots(
       counts,
       [
@@ -364,7 +390,7 @@ async function benchmarkEcdsaP256(
       ...base,
       operations: [],
       unmeasured: [],
-      unsupportedReason: `this browser did not provide ECDSA P-256 through the Web Crypto API (${
+      unsupportedReason: `this browser could not complete a verified ECDSA P-256 round trip through the Web Crypto API (${
         err instanceof Error ? err.message : String(err)
       })`,
     };
@@ -403,6 +429,9 @@ async function benchmarkRsa2048(
     // measuring the prime search.
     const keys = (await crypto.subtle.generateKey(alg, true, ['sign', 'verify'])) as CryptoKeyPair;
     const sig = await crypto.subtle.sign(alg.name, keys.privateKey, CLASSICAL_MESSAGE);
+    if (!(await crypto.subtle.verify(alg.name, keys.publicKey, sig, CLASSICAL_MESSAGE))) {
+      throw new Error('RSA-2048 benchmark preflight signature did not verify');
+    }
     const operations = await measureSlots(
       counts,
       [
@@ -422,7 +451,7 @@ async function benchmarkRsa2048(
       ...base,
       operations: [],
       unmeasured: [notMeasured],
-      unsupportedReason: `this browser did not provide RSASSA-PKCS1-v1_5 through the Web Crypto API (${
+      unsupportedReason: `this browser could not complete a verified RSASSA-PKCS1-v1_5 round trip through the Web Crypto API (${
         err instanceof Error ? err.message : String(err)
       })`,
     };

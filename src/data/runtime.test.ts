@@ -14,6 +14,10 @@ import { FAILURE_CAUSES, FAILURE_CODES } from '../derive/codes';
 const manifest = JSON.parse(
   readFileSync(new URL('../../package.json', import.meta.url), 'utf8')
 ) as { dependencies: Record<string, string> };
+const deployWorkflow = readFileSync(
+  new URL('../../.github/workflows/deploy.yml', import.meta.url),
+  'utf8'
+);
 
 describe('RUNTIME_FACTS', () => {
   it('names a dependency this lab actually has', () => {
@@ -57,5 +61,24 @@ describe('failure codes', () => {
     for (const [code, cause] of Object.entries(FAILURE_CAUSES)) {
       expect(cause, code).not.toContain(code);
     }
+  });
+});
+
+describe('publishing workflow boundaries', () => {
+  it('grants Pages and OIDC write only to the deploy job', () => {
+    const workflowDefaults = deployWorkflow.split('\njobs:')[0];
+    expect(workflowDefaults).toContain('permissions:\n  contents: read');
+    expect(workflowDefaults).not.toContain('pages: write');
+    expect(workflowDefaults).not.toContain('id-token: write');
+
+    const deployJob = deployWorkflow.match(/\n  deploy:\n([\s\S]*?)\n  smoke:/)?.[1] ?? '';
+    expect(deployJob).toContain('permissions:\n      pages: write\n      id-token: write');
+  });
+
+  it('fails visibly if a token-suppressed Dependabot merge cannot dispatch deployment', () => {
+    const autoMergeJob = deployWorkflow.match(/\n  dependabot-auto-merge:\n([\s\S]*)$/)?.[1] ?? '';
+    expect(autoMergeJob).toMatch(/if ! gh workflow run deploy\.yml/);
+    expect(autoMergeJob).toContain('exit 1');
+    expect(autoMergeJob).not.toMatch(/gh workflow run[^\n]*\n\s*\|\| echo/);
   });
 });

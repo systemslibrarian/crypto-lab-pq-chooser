@@ -35,7 +35,7 @@ export interface DerivedSizes {
    * returned true. A size derived from output nobody checked is a number from a
    * function that might not be the function it claims to be.
    */
-  roundTripOk: boolean;
+  roundTripOk: true;
   /** Wall-clock milliseconds this derivation cost, in the reader's own browser. */
   elapsedMs: number;
 }
@@ -93,6 +93,7 @@ export type WorkerResponse =
   | { kind: 'hybrid-result'; requestId: number; result: import('../wire/handshake').HybridOverhead }
   | { kind: 'hybrid-error'; requestId: number; message: string }
   | { kind: 'kem-fixture-result'; requestId: number; result: import('./kem-fixture').KemFixtureResult }
+  | { kind: 'kem-fixture-error'; requestId: number; message: string }
   | { kind: 'benchmark-progress'; requestId: number; done: number; total: number; label: string }
   | { kind: 'benchmark-result'; requestId: number; run: import('../bench/runner').BenchmarkRun }
   | { kind: 'benchmark-error'; requestId: number; message: string };

@@ -98,19 +98,16 @@ function sizeCells(state: RowState): string {
       `<td class="numeric" role="cell" data-cell="secret-key">${cellLabel('Secret key')}${noFigure(reason)}</td>`
     );
   }
-  const { publicKeyBytes, secretKeyBytes, payload, roundTripOk } = state.sizes;
+  const { publicKeyBytes, secretKeyBytes, payload } = state.sizes;
   const payloadCell =
     payload.kind === 'fixed'
       ? bytes(payload.bytes)
       : `${payload.min.toLocaleString('en-US')}–${bytes(payload.max)}` +
         `<span class="row-note">${payload.distinct} distinct lengths in a sample of ${payload.samples} signatures measured here \u2014 not the scheme\u2019s bounds</span>`;
-  const integrity = roundTripOk
-    ? ''
-    : `<span class="row-note">round trip did NOT verify — treat this row as unsound</span>`;
   const barBytes = payload.kind === 'fixed' ? payload.bytes : payload.max;
   return (
     `<td class="numeric" role="cell" data-cell="public-key">${cellLabel('Public key')}${bytes(publicKeyBytes)}${wireBar(publicKeyBytes, barBytes)}</td>` +
-    `<td class="numeric" role="cell" data-cell="payload" data-payload-kind="${payload.kind}">${cellLabel('Ciphertext / signature')}${payloadCell}${integrity}</td>` +
+    `<td class="numeric" role="cell" data-cell="payload" data-payload-kind="${payload.kind}">${cellLabel('Ciphertext / signature')}${payloadCell}</td>` +
     `<td class="numeric" role="cell" data-cell="secret-key">${cellLabel('Secret key')}${bytes(secretKeyBytes)}</td>`
   );
 }

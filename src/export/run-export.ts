@@ -46,7 +46,7 @@ export interface RunExport {
     payloadMax?: number;
     payloadSamples?: number;
     payloadDistinctLengths?: number;
-    roundTripOk?: boolean;
+    roundTripOk?: true;
     derivationMs?: number;
   }>;
   benchmark: Array<{
