@@ -5,7 +5,16 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { bytesEqual, deriveScheme, measureSignatureLength, SIGNERS } from './adapters';
+import {
+  bytesEqual,
+  deriveKemSizes,
+  deriveScheme,
+  deriveSignatureSizes,
+  measureSignatureLength,
+  SIGNERS,
+  type KemLike,
+  type SignerLike,
+} from './adapters';
 
 describe('deriveScheme refuses what it cannot derive', () => {
   it('throws by name for a parameter set that is not in the registry', () => {
@@ -30,14 +39,14 @@ describe('measureSignatureLength', () => {
   it('reports `fixed` when every sample agreed', () => {
     const signer = SIGNERS.falcon512padded;
     const keys = signer.keygen();
-    const measured = measureSignatureLength(signer, keys.secretKey, 12);
+    const measured = measureSignatureLength(signer, keys.publicKey, keys.secretKey, 12);
     expect(measured.kind).toBe('fixed');
   });
 
   it('reports a `range` when they did not, with the sample count on it', () => {
     const signer = SIGNERS.falcon512;
     const keys = signer.keygen();
-    const measured = measureSignatureLength(signer, keys.secretKey, 24);
+    const measured = measureSignatureLength(signer, keys.publicKey, keys.secretKey, 24);
     expect(measured.kind).toBe('range');
     if (measured.kind !== 'range') throw new Error('unreachable');
     expect(measured.samples).toBe(24);
@@ -52,8 +61,8 @@ describe('measureSignatureLength', () => {
     // deterministic while still failing if the sampler stopped varying.
     const signer = SIGNERS.falcon512;
     const keys = signer.keygen();
-    const small = measureSignatureLength(signer, keys.secretKey, 4);
-    const large = measureSignatureLength(signer, keys.secretKey, 64);
+    const small = measureSignatureLength(signer, keys.publicKey, keys.secretKey, 4);
+    const large = measureSignatureLength(signer, keys.publicKey, keys.secretKey, 64);
     if (large.kind !== 'range') throw new Error('64 Falcon signatures should vary');
     const smallSpan = small.kind === 'range' ? small.max - small.min : 0;
     expect(large.max - large.min).toBeGreaterThanOrEqual(smallSpan);
@@ -65,8 +74,43 @@ describe('measureSignatureLength', () => {
     // means different signatures. This checks the adapter does that.
     const signer = SIGNERS.falcon512;
     const keys = signer.keygen();
-    const one = measureSignatureLength(signer, keys.secretKey, 1);
+    const one = measureSignatureLength(signer, keys.publicKey, keys.secretKey, 1);
     expect(one.kind).toBe('fixed');
+  });
+
+  it('refuses a sampled signature that does not verify', () => {
+    const signer: SignerLike = {
+      keygen: () => ({ publicKey: Uint8Array.of(1), secretKey: Uint8Array.of(2) }),
+      sign: () => Uint8Array.of(3),
+      verify: () => false,
+    };
+    expect(() =>
+      measureSignatureLength(signer, Uint8Array.of(1), Uint8Array.of(2), 1)
+    ).toThrow(/sample 1 failed to verify/);
+  });
+});
+
+describe('failed round trips never become printable sizes', () => {
+  it('throws when a KEM decapsulates to a different secret', () => {
+    const kem: KemLike = {
+      keygen: () => ({ publicKey: Uint8Array.of(1), secretKey: Uint8Array.of(2) }),
+      encapsulate: () => ({ cipherText: Uint8Array.of(3), sharedSecret: Uint8Array.of(4) }),
+      decapsulate: () => Uint8Array.of(5),
+    };
+    expect(() => deriveKemSizes(kem, 'synthetic-kem')).toThrow(
+      /decapsulation did not recover/
+    );
+  });
+
+  it('throws when a fixed-length signature does not verify', () => {
+    const signer: SignerLike = {
+      keygen: () => ({ publicKey: Uint8Array.of(1), secretKey: Uint8Array.of(2) }),
+      sign: () => Uint8Array.of(3),
+      verify: () => false,
+    };
+    expect(() => deriveSignatureSizes(signer, 'synthetic-signer', false)).toThrow(
+      /signature failed to verify/
+    );
   });
 });
 

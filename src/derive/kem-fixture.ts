@@ -44,14 +44,9 @@ export interface KemFixtureResult {
   checks: KemFixtureCheck[];
   /** False. Nothing above could have told you. */
   secretsMatch: boolean;
-  honestSecretPrefix: string;
-  recoveredSecretPrefix: string;
   /** True when decapsulation raised nothing — the absence that is the exhibit. */
   raisedNoError: boolean;
 }
-
-const hexPrefix = (bytes: Uint8Array, n: number): string =>
-  Array.from(bytes.slice(0, n), (b) => b.toString(16).padStart(2, '0')).join(' ');
 
 /**
  * Encapsulate honestly, corrupt exactly one ciphertext byte, decapsulate, and
@@ -116,8 +111,6 @@ export function runKemFixture(flipByteIndex: number): KemFixtureResult {
     flippedTo: corrupted[index],
     checks,
     secretsMatch,
-    honestSecretPrefix: hexPrefix(sharedSecret, 8),
-    recoveredSecretPrefix: recovered ? hexPrefix(recovered, 8) : '—',
     raisedNoError,
   };
 }

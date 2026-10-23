@@ -15,8 +15,6 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   # NOT a bare `pages`: with cancel-in-progress, a pull-request run would cancel
@@ -87,6 +85,9 @@ jobs:
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -163,8 +164,10 @@ jobs:
           # Dispatch the file THIS lab has: most are deploy.yml, some deploy-pages.yml
           # or pages.yml. A copied name 404s only on the auto-merge path, after the
           # merge has landed. This lab's file is deploy.yml, which is this one.
-          gh workflow run deploy.yml --repo "$GITHUB_REPOSITORY" --ref main \
-            || echo "::warning::deploy dispatch failed; run deploy.yml by hand"
+          if ! gh workflow run deploy.yml --repo "$GITHUB_REPOSITORY" --ref main; then
+            echo "::error::merge landed, but deploy dispatch failed; run deploy.yml by hand"
+            exit 1
+          fi
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

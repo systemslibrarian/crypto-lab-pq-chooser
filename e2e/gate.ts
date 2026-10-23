@@ -295,8 +295,8 @@ export async function boot(page: Page, mode: BootMode = 'normal'): Promise<void>
   // best-practice, not WCAG-tagged, so `withTags` never runs it — a skip link
   // aimed at a missing element is exactly what a green axe run says nothing
   // about.
-  await expect(page.locator('a.cl-skip-link')).toHaveAttribute('href', '#app');
-  await expect(page.locator('#app')).toHaveCount(1);
+  await expect(page.locator('a.cl-skip-link')).toHaveAttribute('href', '#main-content');
+  await expect(page.locator('#main-content')).toHaveCount(1);
 
   // Dark is the only theme, so the page must carry no theme control at all.
   await expect(
@@ -748,6 +748,8 @@ export async function driveAllStates(page: Page, label: string): Promise<void> {
   await page.keyboard.press('Tab');
   await expect(page.locator('a.cl-skip-link')).toBeFocused();
   await scanAt('the shared skip link focused, slid in from top:-3rem');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#main-content')).toBeFocused();
 
   // ── Core ready: sixteen derived, three deferred, a shortlist on screen ──
   await startDerivation(page);

@@ -203,6 +203,9 @@ export class DeriveClient {
       case 'kem-fixture-result':
         this.settle(this.fixturePending, message.requestId, message.result);
         return;
+      case 'kem-fixture-error':
+        this.fail(this.fixturePending, message.requestId, message.message);
+        return;
       case 'benchmark-progress':
         this.listener.onBenchmarkProgress(message.done, message.total, message.label);
         return;

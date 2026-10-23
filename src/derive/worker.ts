@@ -178,11 +178,19 @@ self.onmessage = (event: MessageEvent<WorkerRequest>): void => {
     }
 
     case 'kem-fixture':
-      post({
-        kind: 'kem-fixture-result',
-        requestId: request.requestId,
-        result: runKemFixture(request.flipByteIndex),
-      });
+      try {
+        post({
+          kind: 'kem-fixture-result',
+          requestId: request.requestId,
+          result: runKemFixture(request.flipByteIndex),
+        });
+      } catch (err) {
+        post({
+          kind: 'kem-fixture-error',
+          requestId: request.requestId,
+          message: err instanceof Error ? err.message : String(err),
+        });
+      }
       return;
 
     case 'benchmark': {

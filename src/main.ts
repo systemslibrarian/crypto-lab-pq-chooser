@@ -85,7 +85,7 @@ let allMs: number | null = null;
 
 app.innerHTML = `
   <div class="wrap">
-    <main>
+    <main id="main-content" tabindex="-1">
       ${renderHero()}
       ${renderChooserPanel(constraints)}
       ${renderSectionNav()}

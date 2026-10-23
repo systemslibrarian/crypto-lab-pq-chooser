@@ -514,9 +514,11 @@ test.describe('negative claim: what a page made of measurements cannot see', () 
 
     // ...and the answer is wrong anyway, which is what makes it a limit.
     await expect(page.locator('[data-fixture-verdict="mismatch"]')).toBeVisible();
-    const honest = await page.locator('[data-honest-secret]').innerText();
-    const recovered = await page.locator('[data-recovered-secret]').innerText();
-    expect(recovered, 'the recovered secret must not be the sender’s').not.toBe(honest);
+    await expect(page.locator('[data-secret-boundary="sender"]')).toHaveText('kept inside the worker');
+    await expect(page.locator('[data-secret-boundary="decapsulation"]')).toHaveText(
+      'full-length key; differs from sender’s'
+    );
+    await expect(page.locator('[data-honest-secret], [data-recovered-secret]')).toHaveCount(0);
     await expect(page.locator('[data-fixture-verdict="mismatch"]')).toContainText('AND WRONG');
 
     // 3. THE LIMITATION IS ON SCREEN IN THAT STATE — visible, not in the README

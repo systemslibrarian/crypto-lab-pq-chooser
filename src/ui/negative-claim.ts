@@ -56,14 +56,17 @@ export function renderFixture(result: KemFixtureResult): string {
   const verdictText = result.secretsMatch
     ? 'The corrupted ciphertext produced the sender’s shared secret, which ML-KEM should not do. Something about this fixture is broken, and the panel is saying so rather than asserting the lesson it was built for.'
     : `Byte ${result.flippedByteIndex} of a ${result.cipherTextBytes}-byte ciphertext was changed from 0x${result.flippedFrom.toString(16).padStart(2, '0')} to 0x${result.flippedTo.toString(16).padStart(2, '0')} — one bit. ${result.kemLabel} returned a full-length shared secret and raised nothing. It is not the sender’s secret.`;
+  const recoveredBoundary = result.secretsMatch
+    ? 'full-length key; unexpectedly matches sender’s'
+    : 'full-length key; differs from sender’s';
 
   return `
     <ul class="checklist" role="list" data-fixture-checks>${checks}</ul>
 
     <div class="pair">
       <div><span class="pair-label">Ciphertext</span><span class="num">${bytes(result.cipherTextBytes)}, one byte changed</span></div>
-      <div><span class="pair-label">Sender’s shared secret</span><span class="num" data-honest-secret>${escapeHTML(result.honestSecretPrefix)} …</span></div>
-      <div><span class="pair-label">What decapsulation returned</span><span class="num" data-recovered-secret>${escapeHTML(result.recoveredSecretPrefix)} …</span></div>
+      <div><span class="pair-label">Sender’s shared secret</span><span class="num" data-secret-boundary="sender">kept inside the worker</span></div>
+      <div><span class="pair-label">What decapsulation returned</span><span class="num" data-secret-boundary="decapsulation">${recoveredBoundary}</span></div>
       <div><span class="pair-label">Error raised</span><span class="num" data-error-code="${result.raisedNoError ? FAILURE_CODES.KEM_NO_FAILURE_CODE : 'threw'}">${result.raisedNoError ? 'none' : 'an exception'}</span></div>
     </div>
 
