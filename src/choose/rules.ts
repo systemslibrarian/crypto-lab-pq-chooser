@@ -183,8 +183,8 @@ const FAMILY_CAVEAT: Record<
   },
   'SLH-DSA': {
     caveat:
-      'Signatures are an order of magnitude larger than the lattice schemes, and the small-signature sets pay for it in signing time measured in seconds.',
-    evidence: { label: 'SPHINCS+ Ledger', href: 'https://systemslibrarian.github.io/crypto-lab-sphincs-ledger/' },
+      'Signatures are large and the small-signature sets sign slowly. Hash-based mathematical security does not guarantee resistance to physical power leakage: a 4 November 2026 preprint reports conditional, stage-wise recovery on a measured Cortex-M4 SHA-2 implementation, not end-to-end full-seed recovery or a browser vulnerability.',
+    evidence: { label: 'SHA-2 SLH-DSA power-analysis preprint', href: 'https://eprint.iacr.org/2026/2753' },
   },
   'Falcon / FN-DSA': {
     caveat:
@@ -343,7 +343,7 @@ export function chooseSchemes(
       reasons.push('It signs fast enough to be used per-request rather than per-release.');
     }
     if (constraints.role === 'signature' && scheme.family === 'SLH-DSA') {
-      reasons.push('Its security rests on the hash function alone — no lattice assumption, no structured algebra.');
+      reasons.push('Its mathematical security relies on hash-function properties rather than a lattice assumption; physical implementations still need leakage protection.');
     }
     if (scheme.family === 'Falcon / FN-DSA') {
       reasons.push('The raw compressed encoding of the same scheme is smaller still, at the cost of a variable-length signature — see the matrix.');

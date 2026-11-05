@@ -97,6 +97,11 @@ describe('every constraint actually constrains', () => {
     );
     expect(list.candidates.some((c) => c.family === 'Falcon / FN-DSA')).toBe(false);
     expect(list.excluded.some((e) => /Gaussian sampler/.test(e.because))).toBe(true);
+    const slh = list.candidates.find((c) => c.family === 'SLH-DSA');
+    expect(slh).toBeDefined();
+    expect(slh!.caveat).toContain('physical power leakage');
+    expect(slh!.caveat).toContain('not end-to-end full-seed recovery');
+    expect(slh!.evidence?.href).toBe('https://eprint.iacr.org/2026/2753');
   });
 
   it('frequent signing excludes the sets that sign in seconds', () => {

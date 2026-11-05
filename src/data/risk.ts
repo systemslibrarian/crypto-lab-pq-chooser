@@ -45,10 +45,10 @@ export const RISK_ROWS: readonly RiskRow[] = [
   },
   {
     subject: 'SLH-DSA',
-    risk: 'Signing cost. The stateless guarantee is paid for in signing time.',
+    risk: 'Signing cost and physical implementation leakage.',
     detail:
-      'SLH-DSA needs no state and makes no lattice assumption — its security rests on the hash function alone. The `s` parameter sets buy their smaller signatures with signing time measured in hundreds of milliseconds to seconds, which is a deployment constraint long before it is a cryptographic one.',
-    evidence: [lab('pq-families', 'PQ Families'), lab('sphincs-ledger', 'SPHINCS+ Ledger')],
+      'SLH-DSA needs no state and its mathematical security relies on hash-function properties, not a lattice assumption. A 4 November 2026 preprint reports non-profiled power analysis of all six SHA-2 parameter sets on a measured Cortex-M4 implementation, using 5,000 traces per seed. Its recovery rates are conditional stage results with preceding secret values supplied, not end-to-end full-seed recovery rates. This does not show a break of the hash-based scheme or this browser implementation. Separately, the `s` sets trade smaller signatures for signing time measured here in hundreds of milliseconds to seconds.',
+    evidence: [lab('pq-families', 'PQ Families'), lab('sphincs-ledger', 'SPHINCS+ Ledger'), { label: 'SHA-2 SLH-DSA power analysis — preprint, 4 November 2026', href: 'https://eprint.iacr.org/2026/2753' }],
     measuredHere:
       'The derivation log on this page timed every one of those signatures in your browser. Compare an SLH-DSA `s` row with the `f` row beside it.',
   },
