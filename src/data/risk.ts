@@ -40,8 +40,8 @@ export const RISK_ROWS: readonly RiskRow[] = [
     subject: 'Falcon / FN-DSA',
     risk: 'Precision-sensitive Gaussian sampler; side-channel assurance is implementation-specific.',
     detail:
-      'The implementation measured here uses floating-point Gaussian sampling. A 12 October 2026 preprint reports fixed-point Falcon-512/1024 signing on Cortex-M4 (ePrint 2026/2431), with precision and memory tradeoffs. That signer is not evaluated here, and fixed point alone does not certify side-channel resistance. The chooser therefore retains its conservative exclusion. A separate preprint reports power-trace key recovery against PQClean Falcon signing on Cortex-M4 (ePrint 2026/2124).',
-    evidence: [lab('falcon-seal', 'Falcon Seal — the sampler exhibit'), lab('pq-families', 'PQ Families'), { label: 'Flying, Not Floating — preprint, 12 October 2026', href: 'https://eprint.iacr.org/2026/2431' }],
+      'The implementation measured here uses floating-point Gaussian sampling. A preprint received 9 October 2026 and last revised 5 November 2026 reports fixed-point Falcon-512/1024 signing on Cortex-M4 (ePrint 2026/2431), with precision and memory tradeoffs. That signer is not evaluated here, and fixed point alone does not certify side-channel resistance. The chooser therefore retains its conservative exclusion. A separate preprint reports power-trace key recovery against PQClean Falcon signing on Cortex-M4 (ePrint 2026/2124).',
+    evidence: [lab('falcon-seal', 'Falcon Seal — the sampler exhibit'), lab('pq-families', 'PQ Families'), { label: 'Flying, Not Floating: Precise Fixed-Point Falcon on Embedded Processors — preprint, received 9 October 2026, revised 5 November 2026', href: 'https://eprint.iacr.org/2026/2431' }],
   },
   {
     subject: 'SLH-DSA',
