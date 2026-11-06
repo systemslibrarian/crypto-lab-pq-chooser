@@ -66,7 +66,7 @@ export function renderBenchPanel(): string {
       <p class="card-lead">
         ${escapeHTML(listed)}, plus X25519, ECDSA P-256 and RSA-2048, measured by one harness in
         one run. Warm-up iterations are discarded and every remaining sample is timed
-        individually, so what you get is a distribution rather than a total divided by a count.
+        individually. Every result must pass a round-trip or verification check after its timer stops; a failed check rejects the entire run. Validation adds wall-clock work and may affect cache/JIT state, but is excluded from each sample. These are consistency checks, not independent conformance tests. Thus what you get is a distribution rather than a total divided by a count.
       </p>
       <p class="card-lead">
         Sample counts differ by cost class and are printed on every row:

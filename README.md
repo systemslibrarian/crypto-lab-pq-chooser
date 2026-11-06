@@ -198,3 +198,7 @@ That measurement made the scheduling decision, which is exactly what the brief p
 ## Limited-use SLH-DSA draft
 
 The live demo includes a dated [SP 800-230 initial-public-draft reference](https://csrc.nist.gov/pubs/sp/800/230/ipd) (13 April 2026), with its 2²⁴-signature per-key limit and explicit non-final, non-general-purpose scope. SPHINCS Ledger provides a workload budget model, not a durable signing counter; PQ Chooser keeps the draft variants unranked and outside measured exports. Existing FIPS 205 executable parameter sets remain the ones these labs sign and measure.
+
+### Timed-operation validity
+
+Every warm-up and measured result is checked after the timer stops: KEM/key-agreement secrets must agree, generated keys must support a round trip, and signatures must verify. A failed check rejects the run; starting another run retires previous timings from display, ranking and export. Validation costs wall time and may influence cache/JIT state, so compare only runs under this harness. Round trips do not replace independent conformance tests. Tests inject corrupt outputs and a failed rerun.

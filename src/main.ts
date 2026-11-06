@@ -425,6 +425,8 @@ benchButton.addEventListener('click', () => {
     ? [...DEFAULT_BENCH_SCHEMES, ...SLOW_BENCH_SCHEMES]
     : [...DEFAULT_BENCH_SCHEMES];
   benchButton.disabled = true;
+  benchmark = null;
+  refreshShortlist();
   benchOutput.innerHTML = '';
   benchProgress.textContent = 'Warming up…';
   client
