@@ -113,7 +113,7 @@ export function renderChooserPanel(c: Constraints): string {
         <summary>What about HQC, the other selected KEM?</summary>
         <p>
           <strong>Selected for standardization, not yet a final FIPS.</strong>
-          <a href="https://csrc.nist.gov/projects/post-quantum-cryptography/post-quantum-cryptography-standardization/selected-algorithms" target="_blank" rel="noopener noreferrer">NIST selected HQC on 11 March 2025</a>
+          <a href="https://csrc.nist.gov/pubs/ir/8545/final" target="_blank" rel="noopener noreferrer">NIST selected HQC on 11 March 2025</a> (NIST IR 8545, the fourth-round status report, which carries that date; the <a href="https://csrc.nist.gov/projects/post-quantum-cryptography/post-quantum-cryptography-standardization/selected-algorithms" target="_blank" rel="noopener noreferrer">selected-algorithms page</a> gives only the month)
           as a code-based complement to ML-KEM; NIST still lists its FIPS as forthcoming.
         </p>
         <p>
