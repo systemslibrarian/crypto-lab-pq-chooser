@@ -33,9 +33,8 @@ import { belowResolution, duration, escapeHTML } from './helpers';
 
 /**
  * The default selection: one set from each family plus the fast SLH-DSA
- * variant, chosen so a first run finishes in a few seconds. The three `s` sets
- * are opt-in with their cost stated, because an unasked-for forty-second wait
- * is how a benchmark panel goes unread.
+ * variant. The three `s` sets are opt-in: their signing and validation work
+ * can dominate wall-clock time, which depends on the device.
  */
 export const DEFAULT_BENCH_SCHEMES = [
   'ml_kem768',
@@ -78,7 +77,7 @@ export function renderBenchPanel(): string {
       <div class="controls">
         <div class="check-row">
           <input type="checkbox" id="bench-slow" />
-          <label for="bench-slow">Include the slow SLH-DSA sets (adds roughly 20–40 seconds)</label>
+          <label for="bench-slow">Include the slow SLH-DSA sets (extra signing and validation; device-dependent time)</label>
         </div>
         <button type="button" class="primary" id="bench-run">Run the benchmark</button>
       </div>

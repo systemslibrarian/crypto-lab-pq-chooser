@@ -44,10 +44,10 @@ import { FAILURE_CODES, FAILURE_CAUSES, type FailureCode } from '../derive/codes
 /**
  * Warm-up and measured sample counts per cost class.
  *
- * Chosen from the measured per-operation costs, so that no single row costs
- * more than roughly fifteen seconds: `cheap` operations run in single-digit
- * milliseconds, `moderate` in tens to hundreds, and `slow` signing runs to
- * seconds. Exported because the panel prints them and the claims suite checks
+ * Chosen to limit measured-operation work across widely varying costs.
+ * Validation adds separate wall-clock work, including signing for every
+ * generated key pair; these counts are not a total run-time guarantee.
+ * Exported because the panel prints them and the claims suite checks
  * that what the panel prints is what the runner used.
  */
 export const ITERATIONS: Record<CostClass, { warmup: number; measured: number }> = {
