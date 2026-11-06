@@ -885,3 +885,36 @@ test.describe('benchmark ratios do not cross cryptographic roles', () => {
     expect(caption).toMatch(/same role/i);
   });
 });
+
+test('a rejected rerun retires previous benchmark timings from the UI and export', async ({ page }) => {
+  await page.addInitScript(() => {
+    const RealWorker = window.Worker;
+    window.Worker = class extends RealWorker {
+      private benchmarkRequests = 0;
+      override postMessage(message: any, transfer?: any): void {
+        if (message.kind === 'benchmark' && ++this.benchmarkRequests === 2) {
+          setTimeout(() => this.dispatchEvent(new MessageEvent('message', { data: {
+            kind: 'benchmark-error', requestId: message.requestId,
+            message: 'Correctness check failed for verify; no timings from this run were accepted.',
+          } })), 0);
+          return;
+        }
+        super.postMessage(message, transfer);
+      }
+    };
+  });
+  await derivedPage(page);
+  await page.locator('#bench-run').click();
+  await expect(page.locator('#bench-table')).toBeVisible({ timeout: 300_000 });
+  await expect(page.locator('#bench-run')).toBeEnabled();
+  await page.locator('#bench-run').click();
+  await expect(page.locator('#bench-progress')).toContainText('Correctness check failed');
+  await expect(page.locator('#bench-table')).toHaveCount(0);
+  const downloadPromise = page.waitForEvent('download');
+  await page.locator('#export-json').click();
+  const stream = await (await downloadPromise).createReadStream();
+  let text = ''; for await (const chunk of stream!) text += chunk.toString();
+  const exported = JSON.parse(text);
+  expect(exported.benchmark).toEqual([]);
+  expect(exported.environment).toBeNull();
+});

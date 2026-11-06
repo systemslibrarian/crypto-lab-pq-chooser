@@ -33,9 +33,8 @@ import { belowResolution, duration, escapeHTML } from './helpers';
 
 /**
  * The default selection: one set from each family plus the fast SLH-DSA
- * variant, chosen so a first run finishes in a few seconds. The three `s` sets
- * are opt-in with their cost stated, because an unasked-for forty-second wait
- * is how a benchmark panel goes unread.
+ * variant. The three `s` sets are opt-in: their signing and validation work
+ * can dominate wall-clock time, which depends on the device.
  */
 export const DEFAULT_BENCH_SCHEMES = [
   'ml_kem768',
@@ -66,7 +65,7 @@ export function renderBenchPanel(): string {
       <p class="card-lead">
         ${escapeHTML(listed)}, plus X25519, ECDSA P-256 and RSA-2048, measured by one harness in
         one run. Warm-up iterations are discarded and every remaining sample is timed
-        individually, so what you get is a distribution rather than a total divided by a count.
+        individually. Every result must pass a round-trip or verification check after its timer stops; a failed check rejects the entire run. Validation adds wall-clock work and may affect cache/JIT state, but is excluded from each sample. These are consistency checks, not independent conformance tests. Thus what you get is a distribution rather than a total divided by a count.
       </p>
       <p class="card-lead">
         Sample counts differ by cost class and are printed on every row:
@@ -78,7 +77,7 @@ export function renderBenchPanel(): string {
       <div class="controls">
         <div class="check-row">
           <input type="checkbox" id="bench-slow" />
-          <label for="bench-slow">Include the slow SLH-DSA sets (adds roughly 20–40 seconds)</label>
+          <label for="bench-slow">Include the slow SLH-DSA sets (extra signing and validation; device-dependent time)</label>
         </div>
         <button type="button" class="primary" id="bench-run">Run the benchmark</button>
       </div>

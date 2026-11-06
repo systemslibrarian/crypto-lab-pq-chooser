@@ -34,6 +34,7 @@
  * reader can check.
  */
 
+import { checkedSample, equalBytes, BenchmarkValidationError } from './validation';
 import { KEMS, SIGNERS, DERIVATION_MESSAGE } from '../derive/adapters';
 import { SCHEMES_BY_ID, type CostClass, type SchemeKind } from '../derive/schemes';
 import { collectEnvironment, type BenchmarkEnvironment } from './environment';
@@ -43,10 +44,10 @@ import { FAILURE_CODES, FAILURE_CAUSES, type FailureCode } from '../derive/codes
 /**
  * Warm-up and measured sample counts per cost class.
  *
- * Chosen from the measured per-operation costs, so that no single row costs
- * more than roughly fifteen seconds: `cheap` operations run in single-digit
- * milliseconds, `moderate` in tens to hundreds, and `slow` signing runs to
- * seconds. Exported because the panel prints them and the claims suite checks
+ * Chosen to limit measured-operation work across widely varying costs.
+ * Validation adds separate wall-clock work, including signing for every
+ * generated key pair; these counts are not a total run-time guarantee.
+ * Exported because the panel prints them and the claims suite checks
  * that what the panel prints is what the runner used.
  */
 export const ITERATIONS: Record<CostClass, { warmup: number; measured: number }> = {
@@ -127,44 +128,26 @@ const defaultYield = (): Promise<void> =>
     setTimeout(resolve, 0);
   });
 
-/**
- * Time one operation `count` times, yielding between iterations.
- *
- * The call is AWAITED inside the bracket even where the operation is
- * synchronous. The noble primitives are synchronous today, so a fire-and-forget
- * call would happen to measure the right thing — until someone put a real
- * `await` inside, at which point the timings would silently become the cost of
- * creating a promise. The extra microtask turn costs far less than this clock
- * can resolve.
- */
-async function timeOperation(
-  count: number,
-  run: () => unknown | Promise<unknown>,
-  yieldFn: () => Promise<void>
-): Promise<number[]> {
-  const samples: number[] = [];
-  for (let i = 0; i < count; i++) {
-    const start = performance.now();
-    await run();
-    samples.push(performance.now() - start);
-    await yieldFn();
-  }
-  return samples;
+/** Validation runs after the clock stops, including warm-up iterations. */
+function checked<T>(slot: OperationSlot, operation: string, run: () => T | Promise<T>, validate: (result: T) => boolean | Promise<boolean>) {
+  return { slot, operation, once: () => checkedSample(operation, run, validate) };
 }
 
 async function measureSlots(
   counts: { warmup: number; measured: number },
-  slots: Array<{ slot: OperationSlot; operation: string; once: () => unknown | Promise<unknown> }>,
+  slots: Array<{ slot: OperationSlot; operation: string; once: () => Promise<number> }>,
   yieldFn: () => Promise<void>,
   onSlotDone: (operation: string) => void
 ): Promise<OperationResult[]> {
   const out: OperationResult[] = [];
   for (const { slot, operation, once } of slots) {
-    // Warm-up: the same work, samples discarded. A cold JIT measures the
-    // compiler rather than the algorithm.
     for (let i = 0; i < counts.warmup; i++) await once();
     await yieldFn();
-    const samples = await timeOperation(counts.measured, once, yieldFn);
+    const samples: number[] = [];
+    for (let i = 0; i < counts.measured; i++) {
+      samples.push(await once());
+      await yieldFn();
+    }
     out.push({ slot, operation, samples, summary: summarize(samples) });
     onSlotDone(operation);
   }
@@ -183,13 +166,16 @@ async function benchmarkScheme(
   if (scheme.kind === 'kem') {
     const kem = KEMS[schemeId];
     const keys = kem.keygen();
-    const { cipherText } = kem.encapsulate(keys.publicKey);
+    const { cipherText, sharedSecret } = kem.encapsulate(keys.publicKey);
     const operations = await measureSlots(
       counts,
       [
-        { slot: 'keygen', operation: 'keygen', once: () => kem.keygen() },
-        { slot: 'produce', operation: 'encapsulate', once: () => kem.encapsulate(keys.publicKey) },
-        { slot: 'consume', operation: 'decapsulate', once: () => kem.decapsulate(cipherText, keys.secretKey) },
+        checked('keygen', 'keygen', () => kem.keygen(), (k) => {
+          const e = kem.encapsulate(k.publicKey);
+          return equalBytes(e.sharedSecret, kem.decapsulate(e.cipherText, k.secretKey));
+        }),
+        checked('produce', 'encapsulate', () => kem.encapsulate(keys.publicKey), (e) => equalBytes(e.sharedSecret, kem.decapsulate(e.cipherText, keys.secretKey))),
+        checked('consume', 'decapsulate', () => kem.decapsulate(cipherText, keys.secretKey), (secret) => equalBytes(secret, sharedSecret)),
       ],
       yieldFn,
       onSlotDone
@@ -213,13 +199,9 @@ async function benchmarkScheme(
   const operations = await measureSlots(
     counts,
     [
-      { slot: 'keygen', operation: 'keygen', once: () => signer.keygen() },
-      { slot: 'produce', operation: 'sign', once: () => signer.sign(DERIVATION_MESSAGE, keys.secretKey) },
-      {
-        slot: 'consume',
-        operation: 'verify',
-        once: () => signer.verify(signature, DERIVATION_MESSAGE, keys.publicKey),
-      },
+      checked('keygen', 'keygen', () => signer.keygen(), (k) => signer.verify(signer.sign(DERIVATION_MESSAGE, k.secretKey), DERIVATION_MESSAGE, k.publicKey)),
+      checked('produce', 'sign', () => signer.sign(DERIVATION_MESSAGE, keys.secretKey), (sig) => signer.verify(sig, DERIVATION_MESSAGE, keys.publicKey)),
+      checked('consume', 'verify', () => signer.verify(signature, DERIVATION_MESSAGE, keys.publicKey), (valid) => valid === true),
     ],
     yieldFn,
     onSlotDone
@@ -272,44 +254,20 @@ async function benchmarkX25519(
     // derivation; "decapsulate" is the receiver's single derivation. Modelling
     // it any other way would flatter X25519 by charging it less work than the
     // KEM it is being compared with.
-    const operations = await measureSlots(
-      counts,
-      [
-        {
-          slot: 'keygen',
-          operation: 'generateKey',
-          once: () => crypto.subtle.generateKey({ name: 'X25519' }, true, ['deriveBits']),
-        },
-        {
-          slot: 'produce',
-          operation: 'ephemeral keygen + deriveBits',
-          once: async () => {
-            const e = (await crypto.subtle.generateKey({ name: 'X25519' }, true, [
-              'deriveBits',
-            ])) as CryptoKeyPair;
-            return crypto.subtle.deriveBits(
-              { name: 'X25519', public: receiver.publicKey },
-              e.privateKey,
-              256
-            );
-          },
-        },
-        {
-          slot: 'consume',
-          operation: 'deriveBits',
-          once: () =>
-            crypto.subtle.deriveBits(
-              { name: 'X25519', public: ephemeral.publicKey },
-              receiver.privateKey,
-              256
-            ),
-        },
-      ],
-      yieldFn,
-      onSlotDone
-    );
+    const derive = (pub: CryptoKey, priv: CryptoKey) => crypto.subtle.deriveBits({ name: 'X25519', public: pub }, priv, 256);
+    const expected = await derive(receiver.publicKey, ephemeral.privateKey);
+    const operations = await measureSlots(counts, [
+      checked('keygen', 'generateKey', async () => await crypto.subtle.generateKey({ name: 'X25519' }, true, ['deriveBits']) as CryptoKeyPair,
+        async (k) => equalBytes(await derive(receiver.publicKey, k.privateKey), await derive(k.publicKey, receiver.privateKey))),
+      checked('produce', 'ephemeral keygen + deriveBits', async () => {
+        const e = await crypto.subtle.generateKey({ name: 'X25519' }, true, ['deriveBits']) as CryptoKeyPair;
+        return { publicKey: e.publicKey, secret: await derive(receiver.publicKey, e.privateKey) };
+      }, async (e) => equalBytes(e.secret, await derive(e.publicKey, receiver.privateKey))),
+      checked('consume', 'deriveBits', () => derive(ephemeral.publicKey, receiver.privateKey), (secret) => equalBytes(secret, expected)),
+    ], yieldFn, onSlotDone);
     return { ...base, operations, unmeasured: [] };
   } catch (err) {
+    if (err instanceof BenchmarkValidationError) throw err;
     return {
       ...base,
       operations: [],
@@ -343,23 +301,17 @@ async function benchmarkEcdsaP256(
     const operations = await measureSlots(
       counts,
       [
-        {
-          slot: 'keygen',
-          operation: 'generateKey',
-          once: () => crypto.subtle.generateKey(alg, true, ['sign', 'verify']),
-        },
-        { slot: 'produce', operation: 'sign', once: () => crypto.subtle.sign(signAlg, keys.privateKey, CLASSICAL_MESSAGE) },
-        {
-          slot: 'consume',
-          operation: 'verify',
-          once: () => crypto.subtle.verify(signAlg, keys.publicKey, sig, CLASSICAL_MESSAGE),
-        },
+        checked('keygen', 'generateKey', async () => await crypto.subtle.generateKey(alg, true, ['sign', 'verify']) as CryptoKeyPair,
+          async (k) => crypto.subtle.verify(signAlg, k.publicKey, await crypto.subtle.sign(signAlg, k.privateKey, CLASSICAL_MESSAGE), CLASSICAL_MESSAGE)),
+        checked('produce', 'sign', () => crypto.subtle.sign(signAlg, keys.privateKey, CLASSICAL_MESSAGE), (sig) => crypto.subtle.verify(signAlg, keys.publicKey, sig, CLASSICAL_MESSAGE)),
+        checked('consume', 'verify', () => crypto.subtle.verify(signAlg, keys.publicKey, sig, CLASSICAL_MESSAGE), (valid) => valid === true),
       ],
       yieldFn,
       onSlotDone
     );
     return { ...base, operations, unmeasured: [] };
   } catch (err) {
+    if (err instanceof BenchmarkValidationError) throw err;
     return {
       ...base,
       operations: [],
@@ -406,18 +358,15 @@ async function benchmarkRsa2048(
     const operations = await measureSlots(
       counts,
       [
-        { slot: 'produce', operation: 'sign', once: () => crypto.subtle.sign(alg.name, keys.privateKey, CLASSICAL_MESSAGE) },
-        {
-          slot: 'consume',
-          operation: 'verify',
-          once: () => crypto.subtle.verify(alg.name, keys.publicKey, sig, CLASSICAL_MESSAGE),
-        },
+        checked('produce', 'sign', () => crypto.subtle.sign(alg.name, keys.privateKey, CLASSICAL_MESSAGE), (sig) => crypto.subtle.verify(alg.name, keys.publicKey, sig, CLASSICAL_MESSAGE)),
+        checked('consume', 'verify', () => crypto.subtle.verify(alg.name, keys.publicKey, sig, CLASSICAL_MESSAGE), (valid) => valid === true),
       ],
       yieldFn,
       onSlotDone
     );
     return { ...base, operations, unmeasured: [notMeasured] };
   } catch (err) {
+    if (err instanceof BenchmarkValidationError) throw err;
     return {
       ...base,
       operations: [],
