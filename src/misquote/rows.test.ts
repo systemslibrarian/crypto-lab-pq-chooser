@@ -11,7 +11,7 @@
 import { describe, expect, it } from 'vitest';
 import { MISQUOTE_ROWS } from './rows';
 import { deriveScheme } from '../derive/adapters';
-import { SCHEMES_BY_ID } from '../derive/schemes';
+import { SCHEMES, SCHEMES_BY_ID } from '../derive/schemes';
 import { DISTINCTIVE_SPEC_INTEGERS } from '../derive/spec-sizes';
 
 describe('the panel is exactly the five rows the audit earned', () => {
@@ -69,10 +69,25 @@ describe('the shape-based rows point at parameter sets that exist', () => {
     expect(SCHEMES_BY_ID.get(row.check.paddedSchemeId)?.variableLength).toBeUndefined();
   });
 
-  it('row 4 names a KEM', () => {
+  it('row 4 names every ML-KEM parameter set, because the claim is an "always"', () => {
     const row = MISQUOTE_ROWS[3];
     if (row.check.kind !== 'relation') throw new Error('row 4 is the relation row');
-    expect(SCHEMES_BY_ID.get(row.check.schemeId)?.kind).toBe('kem');
+    const named = [...row.check.schemeIds];
+    for (const id of named) expect(SCHEMES_BY_ID.get(id)?.kind, id).toBe('kem');
+    // Every unhybridised ML-KEM set the page derives has to be in the check.
+    // With only ML-KEM-1024 in it, the row's own sentence about the other two
+    // sets was wrong and no verdict on the page contradicted it.
+    const mlKemSets = SCHEMES.filter((s) => /^ml_kem\d+$/.test(s.id)).map((s) => s.id);
+    expect(named.slice().sort()).toEqual(mlKemSets.slice().sort());
+    expect(named.length).toBe(3);
+  });
+
+  it('row 4 does not claim the relation holds at any parameter set', () => {
+    // The correction used to read "It holds at ML-KEM-512 and ML-KEM-768".
+    // Both are false: the ciphertext is smaller at both (see check.test.ts,
+    // which re-derives all three comparisons from library output).
+    expect(MISQUOTE_ROWS[3].correction).toMatch(/holds at no ML-KEM parameter set/);
+    expect(MISQUOTE_ROWS[3].correction).not.toMatch(/holds at ML-KEM-512/);
   });
 
   it('row 5 is cited, and says which lab it is cited from', () => {

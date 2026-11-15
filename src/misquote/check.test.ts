@@ -16,7 +16,7 @@ import { MISQUOTE_ROWS } from './rows';
 import { checkClaim, resolveMisquote } from './check';
 
 /** Derive the handful of sets these tests need, once. */
-const NEEDED = ['ml_dsa65', 'ml_dsa87', 'ml_kem1024', 'ml_kem768', 'falcon512', 'falcon512padded'];
+const NEEDED = ['ml_dsa65', 'ml_dsa87', 'ml_kem512', 'ml_kem768', 'ml_kem1024', 'falcon512', 'falcon512padded'];
 const rows = new Map<string, DerivedRow>(
   NEEDED.map((id) => [id, { schemeId: id, state: { status: 'derived', sizes: deriveScheme(id) } }])
 );
@@ -42,23 +42,34 @@ describe('resolveMisquote', () => {
     expect(verdict.observed).toMatch(/every time/);
   });
 
-  it('row 4: ML-KEM-1024’s ciphertext is not larger than its public key', () => {
+  it('row 4: no ML-KEM ciphertext is larger than its public key', () => {
     const verdict = resolveMisquote(rowByNumber(4), rows);
     expect(verdict.status).toBe('contradicted');
+    // One line per parameter set: the verdict has to say what happened at each
+    // of the three, since the claim it answers is an "always".
     expect(verdict.observed).toContain('the same size');
+    expect(verdict.observed.match(/the ciphertext is smaller/g)).toHaveLength(2);
+    for (const label of ['ML-KEM-512', 'ML-KEM-768', 'ML-KEM-1024']) {
+      expect(verdict.observed, label).toContain(label);
+    }
+    expect(verdict.observed).not.toContain('IS larger');
   });
 
-  it('row 4 is a trap only because the pattern holds at the smaller sets', () => {
+  it('row 4 is a trap in the shape of the data: the relation holds at no set', () => {
     // An independent re-derivation of the claim the row is about, rather than a
-    // restatement of the row.
-    for (const id of ['ml_kem512', 'ml_kem768']) {
+    // restatement of the row. FIPS 203 Table 3: encapsulation key 800 / 1184 /
+    // 1568 B against ciphertext 768 / 1088 / 1568 B — smaller, smaller, equal.
+    const smaller: Record<string, [number, number]> = { ml_kem512: [768, 800], ml_kem768: [1088, 1184] };
+    for (const [id, [ct, pk]] of Object.entries(smaller)) {
       const s = deriveScheme(id);
       if (s.payload.kind !== 'fixed') throw new Error('KEM ciphertexts are fixed');
       expect(s.payload.bytes, `${id} ciphertext vs public key`).toBeLessThan(s.publicKeyBytes);
+      expect([s.payload.bytes, s.publicKeyBytes], `${id} against FIPS 203 Table 3`).toEqual([ct, pk]);
     }
     const big = deriveScheme('ml_kem1024');
     if (big.payload.kind !== 'fixed') throw new Error('KEM ciphertexts are fixed');
     expect(big.payload.bytes).toBe(big.publicKeyBytes);
+    expect(big.payload.bytes).toBe(1568);
   });
 
   it('row 5 says it was cited rather than measured', () => {

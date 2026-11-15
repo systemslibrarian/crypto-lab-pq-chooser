@@ -208,7 +208,7 @@ does not grow by invention.
 | 1 | ML-DSA-65 signature **3293** | **3309** | Round-3 Dilithium3 value. `crypto-lab-dilithium-seal/src/__tests__/sources.test.ts:172` and `e2e/provenance.spec.ts:130` already assert the stale number must not appear |
 | 2 | ML-DSA-87 signature **4595** | **4627** | Round-3 Dilithium5 value. Same guard, same file |
 | 3 | Falcon-512 signature 666 treated as fixed | **652–657 raw, 666 padded** | Measured from `falcon512` vs `falcon512padded`. Corrected in three labs 2026-09-29; `crypto-lab-falcon-seal/src/compare.ts:114` holds the shared wording |
-| 4 | ML-KEM-1024 ciphertext assumed larger than its public key | **both 1568** | The ct-larger-than-pk pattern that holds at 512 and 768 breaks at 1024 |
+| 4 | An ML-KEM ciphertext assumed larger than its public key | **smaller at 512 (768 against 800) and 768 (1,088 against 1,184); both 1568 at 1024** | The relation holds at no parameter set, so the panel checks all three rather than 1024 alone (FIPS 203 Table 3) |
 | 5 | UOV public key "278 KB" | **278,432 B = 272 KiB** | The byte count's leading digits read as kilobytes. `crypto-lab-multivariate/src/data.ts:142` documents this exact error and its correction |
 
 Rows 1, 2 and 5 are *other labs' recorded corrections*, cited to the lab that made

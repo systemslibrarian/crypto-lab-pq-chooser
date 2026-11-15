@@ -222,19 +222,27 @@ test.describe('the misquote panel is settled by the page’s own output', () => 
     expect(verdict).toContain(String(digits(await cell(page, 'falcon512padded', 'payload'))));
   });
 
-  test('row 4 reports the same two figures the ML-KEM-1024 row shows', async ({ page }) => {
+  test('row 4 reports the same figures all three ML-KEM rows show', async ({ page }) => {
     test.setTimeout(600_000);
     await derivedPage(page);
-    const pk = digits(await cell(page, 'ml_kem1024', 'public-key'));
-    const ct = digits(await cell(page, 'ml_kem1024', 'payload'));
     const verdict = await page.locator('[data-misquote="4"] .observed').innerText();
-    expect(verdict).toContain(String(pk));
-    expect(verdict).toContain(String(ct));
-    // The trap, re-derived: the pattern holds at the smaller sets and breaks here.
-    expect(digits(await cell(page, 'ml_kem512', 'payload'))).toBeLessThan(
-      digits(await cell(page, 'ml_kem512', 'public-key'))
-    );
-    expect(ct).toBe(pk);
+    const sizes: Record<string, { pk: number; ct: number }> = {};
+    for (const id of ['ml_kem512', 'ml_kem768', 'ml_kem1024']) {
+      const pk = digits(await cell(page, id, 'public-key'));
+      const ct = digits(await cell(page, id, 'payload'));
+      sizes[id] = { pk, ct };
+      // The verdict answers an "always", so it names every set's pair.
+      expect(verdict, `${id} public key`).toContain(String(pk));
+      expect(verdict, `${id} ciphertext`).toContain(String(ct));
+    }
+    // The trap, re-derived off the page: the relation holds at NO set — the
+    // ciphertext is smaller at the two smaller sets and equal at the largest.
+    expect(sizes.ml_kem512.ct).toBeLessThan(sizes.ml_kem512.pk);
+    expect(sizes.ml_kem768.ct).toBeLessThan(sizes.ml_kem768.pk);
+    expect(sizes.ml_kem1024.ct).toBe(sizes.ml_kem1024.pk);
+    expect(
+      await page.locator('[data-misquote="4"] .observed').getAttribute('data-verdict')
+    ).toBe('contradicted');
   });
 
   test('row 5 says it was cited rather than measured', async ({ page }) => {

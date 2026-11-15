@@ -25,8 +25,13 @@ export type MisquoteCheck =
   | { kind: 'value'; schemeId: string; field: 'payload' | 'publicKey'; claimed: number }
   /** The claim is that a length is fixed. Two library exports settle it. */
   | { kind: 'variable'; rawSchemeId: string; paddedSchemeId: string }
-  /** The claim is about a relation between two derived figures. */
-  | { kind: 'relation'; schemeId: string; relation: 'ciphertext-larger-than-public-key' }
+  /**
+   * The claim is about a relation between two derived figures, tested at every
+   * parameter set the claim says it holds at. One set cannot settle an
+   * "always": checking ML-KEM-1024 alone left the sentence beside it free to
+   * say the relation held at the other two, which it does not.
+   */
+  | { kind: 'relation'; schemeIds: readonly string[]; relation: 'ciphertext-larger-than-public-key' }
   /** Not derivable here, and the row says so rather than implying it was checked. */
   | { kind: 'cited'; source: string };
 
@@ -73,10 +78,14 @@ export const MISQUOTE_ROWS: readonly MisquoteRow[] = [
     n: 4,
     misquote: 'An ML-KEM ciphertext is always larger than its public key.',
     correction:
-      'It holds at ML-KEM-512 and ML-KEM-768 and then stops holding. At ML-KEM-1024 the two are the same size — the pattern is an accident of the compression parameters, not a property of the scheme.',
+      'It holds at no ML-KEM parameter set. At ML-KEM-512 and ML-KEM-768 the ciphertext is SMALLER than the encapsulation key, and at ML-KEM-1024 the two are the same size — what the ciphertext costs is set by the compression parameters du and dv, not by the shape of the key.',
     evidence:
-      'No incident behind this one. It is a trap in the shape of the data, and the derived row settles it in one comparison.',
-    check: { kind: 'relation', schemeId: 'ml_kem1024', relation: 'ciphertext-larger-than-public-key' },
+      'No incident behind this one. It is a trap in the shape of the data, and the derived rows settle it in three comparisons — one per parameter set, because one set cannot settle an "always".',
+    check: {
+      kind: 'relation',
+      schemeIds: ['ml_kem512', 'ml_kem768', 'ml_kem1024'],
+      relation: 'ciphertext-larger-than-public-key',
+    },
   },
   {
     n: 5,

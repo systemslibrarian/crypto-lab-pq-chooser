@@ -97,23 +97,31 @@ export function resolveMisquote(
     };
   }
 
-  // relation
-  const derived = rows.get(check.schemeId);
-  const payload = fixedBytes(payloadOf(derived));
-  const publicKey = publicKeyOf(derived);
-  if (payload === null || publicKey === null) return { status: 'pending', observed: '' };
-  const label = SCHEMES_BY_ID.get(check.schemeId)?.label ?? check.schemeId;
-  return payload > publicKey
-    ? {
-        status: 'confirms-misquote',
-        observed: `${label}: ciphertext ${payload} B, public key ${publicKey} B — the ciphertext IS larger here.`,
-      }
-    : {
-        status: 'contradicted',
-        observed: `${label}: ciphertext ${payload} B, public key ${publicKey} B — ${
-          payload === publicKey ? 'the same size.' : 'the ciphertext is smaller.'
-        }`,
-      };
+  // relation — every named set, because the claim is an "always" and a single
+  // set cannot refute one. Checking ML-KEM-1024 alone returned "contradicted"
+  // while the correction beside it wrongly said the relation held at the other
+  // two sets, and nothing on the page looked.
+  const seen: string[] = [];
+  let anyLarger = false;
+  for (const schemeId of check.schemeIds) {
+    const derived = rows.get(schemeId);
+    const payload = fixedBytes(payloadOf(derived));
+    const publicKey = publicKeyOf(derived);
+    if (payload === null || publicKey === null) return { status: 'pending', observed: '' };
+    const label = SCHEMES_BY_ID.get(schemeId)?.label ?? schemeId;
+    if (payload > publicKey) anyLarger = true;
+    const relation =
+      payload > publicKey
+        ? 'the ciphertext IS larger here.'
+        : payload === publicKey
+          ? 'the same size.'
+          : 'the ciphertext is smaller.';
+    seen.push(`${label}: ciphertext ${payload} B, public key ${publicKey} B — ${relation}`);
+  }
+  return {
+    status: anyLarger ? 'confirms-misquote' : 'contradicted',
+    observed: seen.join(' '),
+  };
 }
 
 // ── The break-it-yourself claim checker ─────────────────────────────────────
