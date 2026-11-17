@@ -98,7 +98,7 @@ describe('the shape-based rows point at parameter sets that exist', () => {
   });
 
   it('the UOV arithmetic in row 5 is stated so it can be checked', () => {
-    // m * n(n+1)/2 for ov-Ip: 44 * 112 * 113 / 2.
+    // m * n(n+1)/2 for uov-Ip: 44 * 112 * 113 / 2.
     const n = 112;
     const m = 44;
     const publicKeyBytes = (m * n * (n + 1)) / 2;
@@ -109,7 +109,7 @@ describe('the shape-based rows point at parameter sets that exist', () => {
   });
 
   it('every correction whose figure is round-specific names its round', () => {
-    // Rows 1 and 2 already said "Round-3"; row 5 gave ov-Ip's (112, 44, 256)
+    // Rows 1 and 2 already said "Round-3"; row 5 gave uov-Ip's (112, 44, 256)
     // with no round at all. Those are the Round-2 figures: UOV specification
     // version 2.0 (5 February 2025) Table 1 gives uov-Ip n=112, m=44, q=256 and
     // |epk| = 278 432 bytes, while version 3.0, the Round-3 submission, moves

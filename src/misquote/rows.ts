@@ -91,7 +91,7 @@ export const MISQUOTE_ROWS: readonly MisquoteRow[] = [
     n: 5,
     misquote: 'A UOV public key is "278 KB".',
     correction:
-      'The byte count’s leading digits read as kilobytes. In the Round-2 submission (UOV specification version 2.0, February 2025) Table 1, ov-Ip has (n, m, q) = (112, 44, 256), so the public key is m·n(n+1)/2 = 44 × 6328 bytes — which is 272 KiB, not 278. The Round-3 submission (version 3.0) moves the set to (119, 45) and a 321,300-byte expanded public key, so the round the figure comes from has to be named.',
+      'The byte count’s leading digits read as kilobytes. In the Round-2 submission (UOV specification version 2.0, February 2025) Table 1, uov-Ip has (n, m, q) = (112, 44, 256), so the public key is m·n(n+1)/2 = 44 × 6328 bytes — which is 272 KiB, not 278. The Round-3 submission (version 3.0) moves the set to (119, 45) and a 321,300-byte expanded public key, so the round the figure comes from has to be named.',
     evidence:
       'crypto-lab-multivariate/src/data.ts documents this exact error and its correction. UOV is not one of the nineteen sets this page derives, so this row is cited, not measured — and it says so rather than borrowing the authority of the rows that were.',
     check: { kind: 'cited', source: 'crypto-lab-multivariate' },
