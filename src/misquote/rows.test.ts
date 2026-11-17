@@ -107,4 +107,22 @@ describe('the shape-based rows point at parameter sets that exist', () => {
     expect(Math.round(publicKeyBytes / 1024)).toBe(272);
     expect(MISQUOTE_ROWS[4].correction).toContain('272 KiB');
   });
+
+  it('every correction whose figure is round-specific names its round', () => {
+    // Rows 1 and 2 already said "Round-3"; row 5 gave ov-Ip's (112, 44, 256)
+    // with no round at all. Those are the Round-2 figures: UOV specification
+    // version 2.0 (5 February 2025) Table 1 gives uov-Ip n=112, m=44, q=256 and
+    // |epk| = 278 432 bytes, while version 3.0, the Round-3 submission, moves
+    // the set to (119, 45) with a 321,300-byte expanded public key.
+    for (const n of [1, 2, 5]) {
+      const row = MISQUOTE_ROWS[n - 1];
+      expect(row.n).toBe(n);
+      expect(row.correction, `row ${n} names the round its figure comes from`).toMatch(
+        /Round-[23]|Round [23]/,
+      );
+    }
+    expect(MISQUOTE_ROWS[4].correction).toContain('Round-2 submission');
+    expect(MISQUOTE_ROWS[4].correction).toContain('version 2.0');
+    expect(MISQUOTE_ROWS[4].correction).toContain('321,300');
+  });
 });
