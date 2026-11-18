@@ -98,22 +98,34 @@ describe('the shape-based rows point at parameter sets that exist', () => {
   });
 
   it('the UOV arithmetic in row 5 is stated so it can be checked', () => {
-    // m * n(n+1)/2 for uov-Ip: 44 * 112 * 113 / 2.
-    const n = 112;
-    const m = 44;
-    const publicKeyBytes = (m * n * (n + 1)) / 2;
-    expect(publicKeyBytes).toBe(278_432);
+    // The misquote is a REAL historical error -- crypto-lab-multivariate once
+    // labelled 278,432 bytes as '278 KB' -- so it stays at the Round-2 figure
+    // it was made about. That is why this row is cited rather than measured.
+    // m * n(n+1)/2 for uov-Ip Round 2: 44 * 112 * 113 / 2.
+    const roundTwo = (44 * 112 * 113) / 2;
+    expect(roundTwo).toBe(278_432);
     // ...and that really is 272 KiB, not 278.
-    expect(Math.round(publicKeyBytes / 1024)).toBe(272);
+    expect(Math.round(roundTwo / 1024)).toBe(272);
     expect(MISQUOTE_ROWS[4].correction).toContain('272 KiB');
+
+    // The cited row moved to Round 3 on 2026-11-18, and the correction carries
+    // the same formula over the new set so the lesson lands on the live figure
+    // too: the identical misreading of 321,300 would say "321 KB".
+    const roundThree = (45 * 119 * 120) / 2;
+    expect(roundThree).toBe(321_300);
+    expect(Number((roundThree / 1024).toFixed(1))).toBe(313.8);
+    expect(MISQUOTE_ROWS[4].correction).toContain('45 \u00d7 7140 = 321,300');
+    expect(MISQUOTE_ROWS[4].correction).toContain('313.8 KiB');
   });
 
   it('every correction whose figure is round-specific names its round', () => {
     // Rows 1 and 2 already said "Round-3"; row 5 gave uov-Ip's (112, 44, 256)
     // with no round at all. Those are the Round-2 figures: UOV specification
     // version 2.0 (5 February 2025) Table 1 gives uov-Ip n=112, m=44, q=256 and
-    // |epk| = 278 432 bytes, while version 3.0, the Round-3 submission, moves
-    // the set to (119, 45) with a 321,300-byte expanded public key.
+    // |epk| = 278 432 bytes, while version 3.0 (30 August 2026), the Round-3
+    // submission, moves the set to (119, 45) with 321,300 bytes. Row 5 now
+    // names BOTH, because the misquote belongs to the first and the cited row
+    // has moved to the second.
     for (const n of [1, 2, 5]) {
       const row = MISQUOTE_ROWS[n - 1];
       expect(row.n).toBe(n);
