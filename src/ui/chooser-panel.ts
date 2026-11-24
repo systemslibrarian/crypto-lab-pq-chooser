@@ -44,12 +44,10 @@ export function renderChooserPanel(c: Constraints): string {
   return `
     <section class="card card-primary" id="chooser" aria-labelledby="chooser-h">
       <span class="eyebrow">Start here</span>
-      <h2 id="chooser-h">Which schemes should you investigate?</h2>
+      <h2 id="chooser-h">Which schemes fit?</h2>
       <p class="card-lead">
-        NIST standardised several post-quantum replacements, and they trade against each other
-        — small keys against large signatures, fast verification against slow signing. Tell it
-        what constrains you and it shortlists up to three, from sizes it derives by
-        <strong>running the real algorithms here</strong>.
+        Choose key exchange or signing, then set your constraints. Your browser runs the
+        algorithms, measures their sizes and shortlists up to three candidates.
       </p>
 
       <div class="role-tabs" role="tablist" aria-label="What are you choosing?">
