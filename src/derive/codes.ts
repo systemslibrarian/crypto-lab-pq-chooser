@@ -112,7 +112,7 @@ export const FAILURE_CAUSES: Record<FailureCode, string> = {
     'the derivation threw, and the library\u2019s own message follows on this row',
   [FAILURE_CODES.WORKER_UNAVAILABLE]:
     'this browser provides no Web Worker, and deriving the matrix on the main thread would freeze the page for about nine seconds',
-  [FAILURE_CODES.CLAIM_MALFORMED]: 'that is not a whole number of bytes',
+  [FAILURE_CODES.CLAIM_MALFORMED]: 'enter a positive whole number of bytes within the safe integer range',
   [FAILURE_CODES.CLAIM_NOT_DERIVED]:
     'that figure has not been derived on this device yet, so there is nothing to check the claim against',
   [FAILURE_CODES.CLAIM_CONTRADICTED]: 'the library does not produce that length',

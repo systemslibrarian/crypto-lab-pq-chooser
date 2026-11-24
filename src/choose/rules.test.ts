@@ -219,6 +219,16 @@ describe('performance is included only when it was measured', () => {
     for (const c of list.candidates) expect(c.timings).toBeNull();
   });
 
+  it('uses verified device timings first and wire bytes to break ties', () => {
+    const constraints = with_({ role: 'signature', minCategory: 1, wireBudget: 'any', verificationFrequency: 'frequent' });
+    const rowsForTiming = [['ml_dsa44', 2], ['slh_dsa_sha2_128f', 1], ['falcon512padded', 2]] as const;
+    const benchmark = { rows: rowsForTiming.map(([id, median]) => ({
+      id, operations: [{ slot: 'consume', operation: 'verify', summary: { median } }],
+    })) } as BenchmarkRun;
+    const list = chooseSchemes(constraints, rows, benchmark);
+    expect(list.candidates.map(c => c.schemeId)).toEqual(['slh_dsa_sha2_128f', 'falcon512padded', 'ml_dsa44']);
+  });
+
   it('carries the measured medians once one has', () => {
     const list = chooseSchemes(DEFAULT_CONSTRAINTS, rows);
     const target = list.candidates[0];

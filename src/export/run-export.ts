@@ -46,6 +46,7 @@ export interface RunExport {
     payloadMax?: number;
     payloadSamples?: number;
     payloadDistinctLengths?: number;
+    observedLengths?: readonly number[];
     roundTripOk?: boolean;
     derivationMs?: number;
   }>;
@@ -116,6 +117,7 @@ export function buildRunExport(
               payloadMax: s.payload.max,
               payloadSamples: s.payload.samples,
               payloadDistinctLengths: s.payload.distinct,
+              observedLengths: s.payload.observedLengths,
             }),
       };
     }),

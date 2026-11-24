@@ -75,6 +75,41 @@ async function derivedPage(page: Page, { slow = false } = {}): Promise<void> {
   }
 }
 
+test('a KEM-only requirement cannot filter the signature shortlist', async ({ page }) => {
+  await derivedPage(page);
+  await page.locator('#c-hybrid').check();
+  await page.locator('#role-signature').click();
+  await expect(page.locator('[data-candidate]').first()).toBeVisible();
+  await page.locator('#role-kem').click();
+  await expect(page.locator('#c-hybrid')).toBeChecked();
+});
+
+test('a slow wire result cannot replace the retirement notice after an edit', async ({ page }) => {
+  await derivedPage(page);
+  await page.evaluate(() => {
+    const post = Worker.prototype.postMessage;
+    Worker.prototype.postMessage = function (this: Worker, message: { kind?: string }) {
+      if (message.kind === 'wire') setTimeout(() => post.call(this, message), 350);
+      else post.call(this, message);
+    };
+  });
+  await page.locator('#wire-run').click();
+  await page.locator('#wire-kem').selectOption('ml_kem512');
+  await expect(page.locator('#wire-run')).toBeEnabled();
+  await expect(page.locator('#wire-output [data-retired]')).toBeVisible();
+  await expect(page.locator('[data-wire-total]')).toHaveCount(0);
+});
+
+test('a missing worker module ends pending requests and explains the missing figures', async ({ page }) => {
+  await page.route('**/assets/worker-*.js', route => route.fulfill({ status: 503, body: '' }));
+  await page.goto('./');
+  await expect(page.locator('tr[data-code="WORKER_UNAVAILABLE"]')).toHaveCount(19);
+  await expect(page.locator('[data-shortlist-state=unavailable]')).toBeVisible();
+  await page.locator('#wire-run').click();
+  await expect(page.locator('#wire-output [data-wire-code]')).toBeVisible();
+  await expect(page.locator('#wire-run')).toBeEnabled();
+});
+
 test('HQC status is visible in the key-exchange decision without a fabricated measured row', async ({ page }) => {
   await derivedPage(page);
   const hqc = page.locator('#hqc-scope');
@@ -381,6 +416,8 @@ test.describe('every failure path is reachable and names its actual cause', () =
     const skipped = page.locator('tr[data-code="DERIVE_SKIPPED"]');
     expect(await skipped.count()).toBeGreaterThan(0);
     await expect(skipped.first()).toContainText('skipped by you');
+    await expect(page.locator('#matrix-status')).not.toContainText('All sets complete');
+    await expect(page.locator('#derivation-strip')).not.toContainText('for all of them');
   });
 
   test('WORKER_UNAVAILABLE explains itself on every row and in the status line', async ({ page }) => {
@@ -389,6 +426,7 @@ test.describe('every failure path is reachable and names its actual cause', () =
     await expect(page.locator('tr[data-code="WORKER_UNAVAILABLE"]')).toHaveCount(19);
     await expect(page.locator('#matrix-status')).toContainText('no Web Worker');
     await expect(page.locator('#matrix-body')).toContainText('freeze the page');
+    await expect(page.locator('[data-shortlist-state=unavailable]')).toBeVisible();
   });
 
   test('BENCH_NOT_MEASURED states the reason RSA keygen is not timed', async ({ page }) => {

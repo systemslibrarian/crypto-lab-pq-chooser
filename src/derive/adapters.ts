@@ -112,7 +112,8 @@ function encodeSample(index: number): Uint8Array {
 export function measureSignatureLength(
   signer: SignerLike,
   secretKey: Uint8Array,
-  samples: number
+  samples: number,
+  variableEncoding = false
 ): PayloadSize {
   const lengths: number[] = [];
   for (let i = 0; i < samples; i++) {
@@ -120,10 +121,11 @@ export function measureSignatureLength(
   }
   const min = Math.min(...lengths);
   const max = Math.max(...lengths);
-  const distinct = new Set(lengths).size;
-  return distinct === 1
+  const observedLengths = [...new Set(lengths)].sort((a, b) => a - b);
+  const distinct = observedLengths.length;
+  return distinct === 1 && !variableEncoding
     ? { kind: 'fixed', bytes: min }
-    : { kind: 'range', min, max, samples, distinct };
+    : { kind: 'range', min, max, samples, distinct, observedLengths };
 }
 
 /**
@@ -166,7 +168,7 @@ export function deriveScheme(schemeId: string): DerivedSizes {
   // everything else one signature settles the length, and sixteen SLH-DSA-256s
   // signatures would cost over a minute to learn nothing.
   const payload = scheme.variableLength
-    ? measureSignatureLength(signer, secretKey, FALCON_SAMPLES)
+    ? measureSignatureLength(signer, secretKey, FALCON_SAMPLES, true)
     : ({ kind: 'fixed', bytes: signature.length } as const);
 
   return {

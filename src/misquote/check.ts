@@ -129,7 +129,7 @@ export function resolveMisquote(
 export type ClaimField = 'publicKey' | 'payload';
 
 export interface ClaimResult {
-  outcome: 'confirmed' | 'failed';
+  outcome: 'confirmed' | 'range' | 'failed';
   /** Present when `outcome` is 'failed'. Named on the page, never swallowed. */
   code?: FailureCode;
   cause?: string;
@@ -167,12 +167,14 @@ export function checkClaim(
   // typing a byte count meant, so accepting them would answer a question the
   // reader did not ask.
   const claimed = /^\d+$/.test(trimmed) ? Number(trimmed) : NaN;
-  if (!Number.isInteger(claimed) || claimed <= 0) {
+  if (!Number.isSafeInteger(claimed) || claimed <= 0) {
     return {
       outcome: 'failed',
       code: FAILURE_CODES.CLAIM_MALFORMED,
       cause: FAILURE_CAUSES[FAILURE_CODES.CLAIM_MALFORMED],
-      message: `“${trimmed || '(nothing)'}” is not a whole number of bytes, so there is nothing to check.`,
+      message: !/^\d+$/.test(trimmed)
+        ? `“${trimmed || '(nothing)'}” is not a whole number of bytes in decimal notation.`
+        : 'Enter a positive byte count within the safe integer range.',
     };
   }
 
@@ -203,10 +205,13 @@ export function checkClaim(
   const payload = sizes.payload;
   if (payload.kind === 'range') {
     const inside = claimed >= payload.min && claimed <= payload.max;
+    if (inside && claimed !== payload.min && claimed !== payload.max && !payload.observedLengths?.includes(claimed)) {
+      return { outcome: 'range', message: `${claimed} B lies inside the sample range ${payload.min}–${payload.max} B. This run has no recorded signature of that exact length. This scheme has no single signature size.` };
+    }
     return inside
       ? {
           outcome: 'confirmed',
-          message: `${label} signatures measured ${payload.min}–${payload.max} B over ${payload.samples} samples, so ${claimed} B falls inside what was seen — but this scheme has no single signature size to be right about.`,
+          message: `${label} signatures measured ${payload.min}–${payload.max} B over ${payload.samples} samples, including a signature of ${claimed} B — but this scheme has no single signature size to be right about.`,
         }
       : {
           outcome: 'failed',

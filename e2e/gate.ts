@@ -323,7 +323,8 @@ export async function boot(page: Page, mode: BootMode = 'normal'): Promise<void>
   await expect(page.locator('#bench-slow')).not.toBeChecked();
   // Nothing is pinned and nothing is shortlisted before anything is derived.
   await expect(page.locator('[data-tray-state="empty"]')).toBeVisible();
-  await expect(page.locator('[data-shortlist-state="waiting"]')).toBeVisible();
+  const initialShortlist = mode === 'no-worker' ? 'unavailable' : 'waiting';
+  await expect(page.locator(`[data-shortlist-state="${initialShortlist}"]`)).toBeVisible();
   await expect(page.locator('#derive-slow')).toBeVisible();
   await expect(page.locator('#stop-slow')).toBeHidden();
 

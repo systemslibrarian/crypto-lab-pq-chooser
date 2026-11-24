@@ -64,6 +64,9 @@ export function renderClaimResult(
   rows: ReadonlyMap<string, DerivedRow>
 ): string {
   const result = checkClaim(schemeId, field, claimedText, rows);
+  if (result.outcome === 'range') {
+    return `<div class="verdict verdict-warn" data-claim-outcome="range"><div class="verdict-body"><div class="verdict-title">WITHIN THE SAMPLE RANGE</div><p class="verdict-text">${escapeHTML(result.message)}</p></div></div>`;
+  }
   if (result.outcome === 'confirmed') {
     return `<div class="verdict verdict-ok" data-claim-outcome="confirmed">
       <span class="verdict-icon" aria-hidden="true">✓</span>

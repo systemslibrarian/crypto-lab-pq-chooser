@@ -24,6 +24,7 @@ export interface DeriveListener {
   /** The sixteen core sets are in; the chooser is usable from here. */
   onCoreReady: (coreMs: number) => void;
   onMatrixDone: (totalMs: number) => void;
+  onWorkerFailure: (message: string) => void;
   onBenchmarkProgress: (done: number, total: number, label: string) => void;
 }
 
@@ -36,9 +37,9 @@ export class DeriveClient {
   readonly rows = new Map<string, DerivedRow>();
   readonly events: DerivationEvent[] = [];
   /** True when nothing can be derived at all. The page renders the reason. */
-  readonly workerUnavailable: boolean;
+  get workerUnavailable(): boolean { return !this.worker; }
 
-  private readonly worker: Worker | null;
+  private worker: Worker | null;
   private readonly listener: DeriveListener;
   private nextRequestId = 1;
   private readonly wirePending = new Map<number, Pending<HandshakeCost>>();
@@ -65,7 +66,6 @@ export class DeriveClient {
       }
     }
     this.worker = worker;
-    this.workerUnavailable = worker === null;
 
     if (!worker) {
       for (const scheme of SCHEMES) {
@@ -82,7 +82,25 @@ export class DeriveClient {
       return;
     }
 
+    worker.onerror = () => this.workerFailed();
+    worker.onmessageerror = () => this.workerFailed();
     worker.onmessage = (event: MessageEvent<WorkerResponse>): void => this.receive(event.data);
+  }
+
+  private workerFailed(): void {
+    if (!this.worker) return;
+    this.worker.terminate();
+    this.worker = null;
+    const cause = 'The calculation worker stopped or could not load. Reload the page to retry.';
+    for (const table of [this.wirePending, this.hybridPending, this.fixturePending, this.benchPending]) {
+      for (const request of table.values()) request.reject(new Error(cause));
+      table.clear();
+    }
+    for (const [schemeId, row] of this.rows) {
+      if (row.state.status === 'derived') continue;
+      this.rows.set(schemeId, { schemeId, state: { status: 'unavailable', code: FAILURE_CODES.WORKER_UNAVAILABLE, cause } });
+    }
+    this.listener.onWorkerFailure(cause);
   }
 
   /** True once the reader has asked for the slow sets to be abandoned. */
@@ -202,6 +220,9 @@ export class DeriveClient {
         return;
       case 'kem-fixture-result':
         this.settle(this.fixturePending, message.requestId, message.result);
+        return;
+      case 'kem-fixture-error':
+        this.fail(this.fixturePending, message.requestId, message.message);
         return;
       case 'benchmark-progress':
         this.listener.onBenchmarkProgress(message.done, message.total, message.label);

@@ -233,6 +233,7 @@ export function chooseSchemes(
     excluded.push({ schemeId: scheme.id, label: scheme.label, because });
   };
 
+  const requireHybrid = constraints.role === 'kem' && constraints.hybridRequired;
   const inRole = SCHEMES.filter((s) => s.kind === constraints.role);
   const survivors: Scheme[] = [];
 
@@ -250,7 +251,7 @@ export function chooseSchemes(
       exclude(scheme, `its specification claims NIST category ${scheme.nistCategory}, below the floor you set`);
       continue;
     }
-    if (constraints.hybridRequired && scheme.family !== 'Hybrid') {
+    if (requireHybrid && scheme.family !== 'Hybrid') {
       exclude(scheme, 'it carries no classical component, and you required a hybrid');
       continue;
     }
@@ -294,6 +295,7 @@ export function chooseSchemes(
   const orderedBy: string[] = [];
   const ordered = [...affordable];
 
+  ordered.sort((a, b) => (a.wireBytes ?? Infinity) - (b.wireBytes ?? Infinity));
   if (constraints.role === 'signature' && constraints.verificationFrequency === 'frequent') {
     // Verification cost first, where it has been measured; otherwise this
     // criterion does not apply and does not silently reorder anything.
@@ -305,7 +307,6 @@ export function chooseSchemes(
     }
   }
   orderedBy.push('derived bytes on the wire, smallest first');
-  ordered.sort((a, b) => (a.wireBytes ?? Infinity) - (b.wireBytes ?? Infinity));
 
   // ── Diversity. A shortlist of three sets from one family is one option. ────
   const seenFamilies = new Set<string>();
@@ -324,7 +325,7 @@ export function chooseSchemes(
       if (shortlisted.length === 3) break;
     }
   }
-  if (shortlisted.length > 1) {
+  if (seenFamilies.size > 1) {
     orderedBy.push('one parameter set per family, so the shortlist is a real choice rather than the same tradeoff three times');
   }
 
@@ -336,11 +337,11 @@ export function chooseSchemes(
         `${wireBytes.toLocaleString('en-US')} bytes on the wire, derived here — ${(wireBytes / CLASSICAL_WIRE_BYTES[constraints.role]).toFixed(0)}× the classical pair it would replace.`
       );
     }
-    if (constraints.hybridRequired) {
+    if (requireHybrid) {
       reasons.push('It carries a classical key exchange alongside the post-quantum one, which is what you required.');
     }
     if (constraints.role === 'signature' && constraints.signingFrequency === 'frequent') {
-      reasons.push('It signs fast enough to be used per-request rather than per-release.');
+      reasons.push('Its parameter set passes this chooser’s frequent-signing filter. Check measured signing times against your own latency budget.');
     }
     if (constraints.role === 'signature' && scheme.family === 'SLH-DSA') {
       reasons.push('Its mathematical security relies on hash-function properties rather than a lattice assumption; physical implementations still need leakage protection.');

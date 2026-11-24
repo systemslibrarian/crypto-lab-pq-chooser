@@ -65,6 +65,7 @@ async function deriveOne(schemeId: string, label: string): Promise<void> {
   await yieldToEventLoop();
   try {
     const sizes = deriveScheme(schemeId);
+    if (!sizes.roundTripOk) throw new Error('The generated key pair failed its round-trip check.');
     post({
       kind: 'row',
       row: { schemeId, state: { status: 'derived', sizes } },
@@ -178,11 +179,11 @@ self.onmessage = (event: MessageEvent<WorkerRequest>): void => {
     }
 
     case 'kem-fixture':
-      post({
-        kind: 'kem-fixture-result',
-        requestId: request.requestId,
-        result: runKemFixture(request.flipByteIndex),
-      });
+      try {
+        post({ kind: 'kem-fixture-result', requestId: request.requestId, result: runKemFixture(request.flipByteIndex) });
+      } catch (err) {
+        post({ kind: 'kem-fixture-error', requestId: request.requestId, message: err instanceof Error ? err.message : String(err) });
+      }
       return;
 
     case 'benchmark': {

@@ -244,6 +244,6 @@ export function matrixStatusText(rows: ReadonlyMap<string, DerivedRow>): string 
     );
   }
   if (active) parts.push(`Now measuring ${label(active.schemeId)}.`);
-  else if (derived + unavailable.length === all.length) parts.push('Derivation complete.');
+  else if (derived === all.length) parts.push('Derivation complete.');
   return parts.join(' ');
 }

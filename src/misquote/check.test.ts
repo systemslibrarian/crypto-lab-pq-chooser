@@ -149,6 +149,17 @@ describe('checkClaim — the break-it-yourself interaction', () => {
     expect(inside.message).toMatch(/no single (signature size|number)/);
   });
 
+  it('distinguishes an unobserved interior length from a sampled length', () => {
+    const row = rows.get('falcon512')!;
+    if (row.state.status !== 'derived') throw new Error('expected measured row');
+    const sample = new Map(rows);
+    sample.set('falcon512', { schemeId: 'falcon512', state: { ...row.state, sizes: {
+      ...row.state.sizes, payload: { kind: 'range', min: 650, max: 657, distinct: 3, samples: 4, observedLengths: [650, 655, 657] },
+    } } });
+    expect(checkClaim('falcon512', 'payload', '654', sample).outcome).toBe('range');
+    expect(checkClaim('falcon512', 'payload', '655', sample).outcome).toBe('confirmed');
+  });
+
   it('a claim outside the measured Falcon range is contradicted', () => {
     const result = checkClaim('falcon512', 'payload', '900', rows);
     expect(result.outcome).toBe('failed');

@@ -44,11 +44,11 @@ export function renderChooserPanel(c: Constraints): string {
   return `
     <section class="card card-primary" id="chooser" aria-labelledby="chooser-h">
       <span class="eyebrow">Start here</span>
-      <h2 id="chooser-h">Which two should you investigate?</h2>
+      <h2 id="chooser-h">Which schemes should you investigate?</h2>
       <p class="card-lead">
         NIST standardised several post-quantum replacements, and they trade against each other
         — small keys against large signatures, fast verification against slow signing. Tell it
-        what constrains you and it shortlists two, from sizes it derives by
+        what constrains you and it shortlists up to three, from sizes it derives by
         <strong>running the real algorithms here</strong>.
       </p>
 
@@ -253,7 +253,7 @@ export function renderDerivationStrip(
 
   const took =
     totalMs !== null
-      ? `${(totalMs / 1000).toFixed(1)}\u00a0s for all of them`
+      ? `${(totalMs / 1000).toFixed(1)}\u00a0s${derived === all.length ? ' for all of them' : ' elapsed since the run began'}`
       : `${(coreMs / 1000).toFixed(1)}\u00a0s`;
   const waiting = deferred
     ? ` ${deferred} more sign in seconds each and are measured only when you ask \u2014 see the matrix below.`

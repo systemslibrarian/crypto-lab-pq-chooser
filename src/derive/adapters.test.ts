@@ -34,6 +34,16 @@ describe('measureSignatureLength', () => {
     expect(measured.kind).toBe('fixed');
   });
 
+  it('a single observation of a variable encoding remains a sample', () => {
+    const signer = SIGNERS.falcon512;
+    const sample = measureSignatureLength(signer, signer.keygen().secretKey, 1, true);
+    expect(sample.kind).toBe('range');
+    if (sample.kind === 'range') {
+      expect(sample.observedLengths).toEqual([sample.min]);
+      expect(sample.min).toBe(sample.max);
+    }
+  });
+
   it('reports a `range` when they did not, with the sample count on it', () => {
     const signer = SIGNERS.falcon512;
     const keys = signer.keygen();

@@ -166,6 +166,12 @@ function renderPins(): void {
 function refreshShortlist(): void {
   derivationStrip.innerHTML = renderDerivationStrip(client.rows, coreMs, allMs);
   shortlistHost.innerHTML = renderShortlist(constraints, client.rows, benchmark, new Set(pinned), coreReady);
+  if (client.workerUnavailable) {
+    derivationStrip.textContent = `Calculation unavailable. ${derivedCount()} parameter sets have recorded measurements. Reload to retry.`;
+    if (!coreReady) {
+      shortlistHost.innerHTML = '<p class="status-line" data-shortlist-state="unavailable">No shortlist. The calculation worker is unavailable.</p>';
+    }
+  }
   roleNote.textContent = ROLE_NOTE[constraints.role];
   renderPins();
 }
@@ -211,8 +217,17 @@ const client = new DeriveClient({
     allMs = totalMs;
     stopSlowButton.hidden = true;
     deriveSlowButton.hidden = true;
-    matrixStatus.textContent = `${matrixStatusText(client.rows)} All sets complete after ${(totalMs / 1000).toFixed(1)} s in this browser.`;
+    const outcome = derivedCount() === client.rows.size ? 'All sets complete' : 'Measurement stopped with missing figures';
+    matrixStatus.textContent = `${matrixStatusText(client.rows)} ${outcome} after ${(totalMs / 1000).toFixed(1)} s in this browser.`;
     repaintMatrix();
+    refreshShortlist();
+  },
+  onWorkerFailure: (message) => {
+    deriveSlowButton.disabled = true;
+    stopSlowButton.hidden = true;
+    matrixStatus.textContent = `${message} ${matrixStatusText(client.rows)}`;
+    repaintMatrix();
+    refreshDerivedPanels();
     refreshShortlist();
   },
   onBenchmarkProgress: (done, total, label) => {
@@ -385,16 +400,17 @@ for (const control of [wireKem, wireSig]) {
 wireButton.addEventListener('click', () => {
   const kemId = wireKem.value;
   const sigId = wireSig.value;
+  const signature = wireSignature();
+  recordVerdict(wireState, signature);
   wireButton.disabled = true;
   wireOutput.textContent = 'Generating keys, encapsulating and signing…';
   client
     .requestWire(kemId, sigId)
     .then((cost) => {
-      wireOutput.innerHTML = renderWireResult(cost);
-      recordVerdict(wireState, wireSignature());
+      if (wireState.signature === signature) wireOutput.innerHTML = renderWireResult(cost);
     })
     .catch((err: Error) => {
-      wireOutput.innerHTML = renderWireError(err.message);
+      if (wireState.signature === signature) wireOutput.innerHTML = renderWireError(err.message);
     })
     .finally(() => {
       wireButton.disabled = false;
@@ -434,7 +450,7 @@ benchButton.addEventListener('click', () => {
     .then((run) => {
       benchmark = run;
       benchOutput.innerHTML = renderBenchResult(run);
-      benchProgress.textContent = `Done. ${run.rows.length} rows measured on this device — the shortlist above now orders on measured speed.`;
+      benchProgress.textContent = `Done. ${run.rows.length} benchmark rows processed. Available timings appear beside the measured operations.`;
       refreshShortlist();
     })
     .catch((err: Error) => {
@@ -489,6 +505,7 @@ const fixtureButton = qs<HTMLButtonElement>(app, '#fixture-run');
 function runFixture(): void {
   fixtureButton.disabled = true;
   fixtureAgain.disabled = true;
+  fixtureOutput.textContent = 'Checking the selected ciphertext transformation…';
   client
     .requestKemFixture(flipIndex)
     .then((result) => {

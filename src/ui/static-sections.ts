@@ -16,7 +16,7 @@ export function renderHero(): string {
         <p class="cl-hero-sub">ML-KEM · ML-DSA · FN-DSA · SLH-DSA · FIPS 203/204/205</p>
         <p class="cl-hero-desc">
           Derives all nineteen post-quantum parameter sets by running the real algorithms in
-          your browser, then shortlists two to investigate.
+          your browser, then shortlists up to three to investigate.
         </p>
       </div>
       <aside class="cl-hero-why" aria-label="Why it matters">

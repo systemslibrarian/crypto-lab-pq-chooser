@@ -35,7 +35,7 @@ export function renderWirePanel(): string {
       <p class="card-lead">
         <strong>Not a whole handshake — the part your choice of scheme changes.</strong> One key
         exchange plus one server authentication, taken from the real key share, ciphertext, public
-        key and signature this page just produced. Framing, extension and cipher-suite lists, the
+        key and signature this page just produced. The page signs a fixed demonstration message for sizing. Framing, extension and cipher-suite lists, the leaf certificate’s issuer signature, the
         certificate chain above the leaf, the X.509 wrapper, session tickets and the Finished MACs
         are all excluded; a real ClientHello is several hundred bytes before a key share is added.
         What is here is the part that moves by kilobytes when you leave X25519 and ECDSA behind.
@@ -64,7 +64,7 @@ export function renderWireResult(cost: HandshakeCost): string {
     )
     .join('');
   const variable = cost.signatureVariable
-    ? `<p class="card-lead">${escapeHTML(cost.sigLabel)} signatures are variable-length, so this total is one draw rather than the handshake’s size. Compute it again and the last row will move.</p>`
+    ? `<p class="card-lead">${escapeHTML(cost.sigLabel)} signatures are variable-length, so this total is one draw rather than the handshake’s size. Another draw can have the same or a different length.</p>`
     : '';
   return `
     <div class="table-wrap" tabindex="0" role="region" aria-label="Handshake byte breakdown, scrollable">

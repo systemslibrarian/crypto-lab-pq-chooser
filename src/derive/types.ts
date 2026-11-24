@@ -20,6 +20,7 @@ export type PayloadSize =
       samples: number;
       /** How many distinct lengths those samples took. 1 would mean "looks fixed here". */
       distinct: number;
+      observedLengths?: readonly number[];
     };
 
 /** Everything one parameter set contributed, all of it read off real output. */
@@ -93,6 +94,7 @@ export type WorkerResponse =
   | { kind: 'hybrid-result'; requestId: number; result: import('../wire/handshake').HybridOverhead }
   | { kind: 'hybrid-error'; requestId: number; message: string }
   | { kind: 'kem-fixture-result'; requestId: number; result: import('./kem-fixture').KemFixtureResult }
+  | { kind: 'kem-fixture-error'; requestId: number; message: string }
   | { kind: 'benchmark-progress'; requestId: number; done: number; total: number; label: string }
   | { kind: 'benchmark-result'; requestId: number; run: import('../bench/runner').BenchmarkRun }
   | { kind: 'benchmark-error'; requestId: number; message: string };
